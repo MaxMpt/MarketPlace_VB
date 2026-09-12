@@ -1,0 +1,9 @@
+<span class="stars" aria-hidden="true">
+  {% for _ in "12345"|make_list %}
+    {% if forloop.counter <= filled %}
+      <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2.6l2.9 6 6.6.9-4.8 4.6 1.1 6.6L12 17.8 6.2 20.7l1.1-6.6L2.5 9.5l6.6-.9z"/></svg>
+    {% else %}
+      <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24"><path fill="currentColor" opacity=".28" d="M12 2.6l2.9 6 6.6.9-4.8 4.6 1.1 6.6L12 17.8 6.2 20.7l1.1-6.6L2.5 9.5l6.6-.9z"/></svg>
+    {% endif %}
+  {% endfor %}
+</span>

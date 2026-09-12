@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #f4f4f5;
+  --color-surface: #ffffff;
+  --color-fg: #1c1c1e;
+  --color-muted: #6b6b73;
+  --color-subtle: #8e8e93;
+  --color-primary: #3390ec;
+  --color-primary-fg: #ffffff;
+  --color-star: #e8a317;
+  --color-border: color-mix(in oklab, #1c1c1e 10%, transparent);
+  --color-danger: #e53935;
+  --font-sans: "SF Pro Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --shadow-card: 0 0 0 1px color-mix(in oklab, #1c1c1e 6%, transparent),
+    0 1px 2px color-mix(in oklab, #1c1c1e 4%, transparent);
+  --ease-out-soft: cubic-bezier(0.2, 0, 0, 1);
+}
+
+html.dark {
+  color-scheme: dark;
+  --color-bg: #000000;
+  --color-surface: #1c1c1e;
+  --color-fg: #f2f2f7;
+  --color-muted: #8e8e93;
+  --color-subtle: #636366;
+  --color-primary: #0a84ff;
+  --color-primary-fg: #ffffff;
+  --color-star: #ffd60a;
+  --color-border: color-mix(in oklab, #ffffff 12%, transparent);
+  --color-danger: #ff453a;
+  --shadow-card: 0 0 0 1px color-mix(in oklab, #ffffff 10%, transparent);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  html,
+  body,
+  #app {
+    height: var(--app-height, 100dvh);
+    max-height: var(--app-height, 100dvh);
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: var(--color-surface);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+  }
+
+  .app-shell {
+    height: var(--app-height, 100dvh);
+    max-height: var(--app-height, 100dvh);
+    padding-top: var(--tg-safe-top, 0px);
+    padding-bottom: var(--tg-safe-bottom, 0px);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  img {
+    outline: 1px solid color-mix(in oklab, var(--color-fg) 10%, transparent);
+    outline-offset: -1px;
+  }
+}
+
+@layer utilities {
+  .press {
+    -webkit-tap-highlight-color: color-mix(in oklab, var(--color-primary) 18%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

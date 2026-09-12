@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/profile",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "ВБ2 Каталог",
+      "hasCanvas": false,
+      "bodyTextLen": 273,
+      "bodyTextHash": "2b5aedc5fbab70d3d216a73db4484ed032af5f765d8fcbf6035ff91fc31888a5",
+      "bodyTextPrefix": "Профиль Даниил @open_url Восточное Бутово 2 0 Мои объявления 0 М",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/profile.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "ВБ2 Каталог",
+      "hasCanvas": false,
+      "bodyTextLen": 273,
+      "bodyTextHash": "2b5aedc5fbab70d3d216a73db4484ed032af5f765d8fcbf6035ff91fc31888a5",
+      "bodyTextPrefix": "Профиль Даниил @open_url Восточное Бутово 2 0 Мои объявления 0 М",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/profile-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/profile.json"
+}

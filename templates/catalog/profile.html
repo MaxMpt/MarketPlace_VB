@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load catalog_tags %}
+{% block content %}
+<div class="pad profile-head">
+  <img class="avatar" src="{{ resident.avatar }}" alt="">
+  <div>
+    <p class="profile-name">{{ resident.display_name }}</p>
+    {% if resident.username %}<p class="username">@{{ resident.username }}</p>{% endif %}
+    <p class="muted tiny">Восточное Бутово 2</p>
+  </div>
+</div>
+<div class="stats">
+  <div><strong>{{ listing_count }}</strong><span>Мои объявления</span></div>
+  <div><strong>{{ reviews|length }}</strong><span>Мои отзывы</span></div>
+</div>
+<div class="pad"><a class="btn" href="{% url 'add' %}">+ Новая карточка</a></div>
+
+<section class="section">
+  <h3>Настройки</h3>
+  <form class="settings" method="post" action="{% url 'toggle_theme' %}">
+    {% csrf_token %}
+    <div>
+      <p>Тёмная тема</p>
+      <small class="muted">сохраняется только для вас</small>
+    </div>
+    <button type="submit" class="switch {% if theme == 'dark' %}on{% endif %}" role="switch" aria-checked="{% if theme == 'dark' %}true{% else %}false{% endif %}"></button>
+  </form>
+</section>
+
+<section class="section">
+  <h3>Мои услуги</h3>
+  <div class="stack">
+    {% for s in listings %}
+      {% url 'service_detail' s.pk as card_url %}
+      {% include "catalog/_card.html" with href=card_url name=s.name subtitle=s.category.title rating=s.rating_value count=s.rating_count cover=s.cover price=s.price_label %}
+    {% empty %}
+      <p class="empty">Пока нет объявлений. Нажмите «Новая карточка», если оказываете услугу соседям.</p>
+    {% endfor %}
+  </div>
+</section>
+
+{% if my_companies %}
+<section class="section">
+  <h3>Мои компании</h3>
+  <div class="stack">
+    {% for c in my_companies %}
+      {% url 'company_detail' c.pk as card_url %}
+      {% include "catalog/_card.html" with href=card_url name=c.name subtitle=c.description rating=c.rating_value count=c.rating_count cover=c.cover %}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="section">
+  <h3>Мои отзывы</h3>
+  <div class="stack">
+    {% for r in reviews %}
+      <a class="review" href="{{ r.target_url }}">
+        <div class="review-head">
+          <p>{{ r.target_name }}</p>
+          {% stars r.rating 12 %}
+        </div>
+        {% if r.review_text %}<p>{{ r.review_text }}</p>{% endif %}
+      </a>
+    {% empty %}
+      <p class="empty">Оцените услугу или компанию — отзыв появится здесь.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

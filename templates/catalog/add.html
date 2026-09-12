@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<form class="pad add-form" method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <div class="seg">
+    <label class="{% if kind != 'company' %}on{% endif %}"><input type="radio" name="kind" value="service" {% if kind != 'company' %}checked{% endif %}> Услуга</label>
+    <label class="{% if kind == 'company' %}on{% endif %}"><input type="radio" name="kind" value="company" {% if kind == 'company' %}checked{% endif %}> Компания</label>
+  </div>
+
+  <label class="label" for="name">Название</label>
+  <input id="name" name="name" required minlength="2" maxlength="80" placeholder="Маникюр у дома">
+
+  <div data-service-only>
+    <p class="label">Категория</p>
+    <div class="chips wrap">
+      {% for c in categories %}
+        <label class="chip-opt">
+          <input type="radio" name="category_id" value="{{ c.pk }}" {% if forloop.first %}checked{% endif %}>
+          {{ c.title }}
+        </label>
+      {% endfor %}
+    </div>
+    <label class="label" for="price">Цена</label>
+    <input id="price" name="price_note" maxlength="40" placeholder="от 1 500 ₽">
+  </div>
+
+  <label class="label" for="desc">Описание</label>
+  <textarea id="desc" name="description" rows="4" maxlength="600"></textarea>
+
+  <p class="label">Фото</p>
+  <p class="muted tiny">До 6 снимков — они будут на карточке</p>
+  <input type="file" name="photos" accept="image/*" multiple>
+
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <button class="btn" type="submit">Опубликовать</button>
+</form>
+<script>
+  const kindInputs = document.querySelectorAll('input[name=kind]');
+  const serviceOnly = document.querySelector('[data-service-only]');
+  const labels = document.querySelectorAll('.seg label');
+  function sync() {
+    const company = document.querySelector('input[name=kind]:checked')?.value === 'company';
+    if (serviceOnly) serviceOnly.hidden = company;
+    labels.forEach((el) => el.classList.toggle('on', el.querySelector('input').checked));
+  }
+  kindInputs.forEach((el) => el.addEventListener('change', sync));
+  sync();
+</script>
+{% endblock %}

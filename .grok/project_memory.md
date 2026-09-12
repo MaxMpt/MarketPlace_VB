@@ -1,0 +1,1 @@
+- Telegram bot DB v4 in artifacts/create_db.sql: users, service_categories, companies, services, rating_reviews (company XOR service), photos (review XOR service). Services: category, description, price_cents/price_note, author, rating cache. Browse by category + rating. [2026-09-11]

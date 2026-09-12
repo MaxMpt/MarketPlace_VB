@@ -1,0 +1,23 @@
+{% if photos %}
+<div class="carousel" data-carousel>
+  <div class="carousel-main">
+    <div class="carousel-track" data-scroller>
+      {% for photo in photos %}
+        <img src="{{ photo.src }}" alt="" draggable="false">
+      {% endfor %}
+    </div>
+    {% if photos|length > 1 %}
+      <p class="carousel-count" data-counter>1 / {{ photos|length }}</p>
+    {% endif %}
+  </div>
+  {% if photos|length > 1 %}
+    <div class="carousel-thumbs" data-thumbs>
+      {% for photo in photos %}
+        <button type="button" data-thumb aria-label="Фото {{ forloop.counter }}" {% if forloop.first %}aria-current="true"{% endif %}>
+          <img src="{{ photo.src }}" alt="">
+        </button>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+{% endif %}

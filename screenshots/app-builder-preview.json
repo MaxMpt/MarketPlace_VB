@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "ВБ2 Каталог",
+      "hasCanvas": false,
+      "bodyTextLen": 613,
+      "bodyTextHash": "4455afba65f414e52bd191c7483be46067bf50eda49cc1dea9f53bb52837e50a",
+      "bodyTextPrefix": "ВБ2 Каталог ВОСТОЧНОЕ БУТОВО 2 Каталог двора Услуги жителей и ко",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "ВБ2 Каталог",
+      "hasCanvas": false,
+      "bodyTextLen": 613,
+      "bodyTextHash": "4455afba65f414e52bd191c7483be46067bf50eda49cc1dea9f53bb52837e50a",
+      "bodyTextPrefix": "ВБ2 Каталог ВОСТОЧНОЕ БУТОВО 2 Каталог двора Услуги жителей и ко",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}

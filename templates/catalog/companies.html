@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% load catalog_tags %}
+{% block content %}
+<p class="muted pad-top">Магазины, аптеки, кружки рядом с домом</p>
+<div class="stack pad">
+  {% for c in companies %}
+    {% url 'company_detail' c.pk as card_url %}
+    {% include "catalog/_card.html" with href=card_url name=c.name subtitle=c.description rating=c.rating_value count=c.rating_count cover=c.cover %}
+  {% endfor %}
+</div>
+{% endblock %}
