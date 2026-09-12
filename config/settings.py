@@ -73,3 +73,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
+
+import os
+from urllib.parse import urlparse
+
+_mini = os.environ.get("MINI_APP_URL", "")
+CSRF_TRUSTED_ORIGINS = ["https://*.trycloudflare.com"]
+_parsed = urlparse(_mini)
+if _parsed.scheme and _parsed.netloc:
+    CSRF_TRUSTED_ORIGINS.append(f"{_parsed.scheme}://{_parsed.netloc}")
