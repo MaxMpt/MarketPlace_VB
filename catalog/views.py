@@ -359,20 +359,49 @@ def geo_suggest(request):
     q = (request.GET.get("q") or "").strip()
     if len(q) < 2:
         return JsonResponse({"items": []})
+    items = _nominatim_suggest(q) or _photon_suggest(q)
+    return JsonResponse({"items": items})
+
+
+def _http_json(url: str):
     import json
     import urllib.request
 
+    req = urllib.request.Request(url, headers={"User-Agent": "VB2Catalog/1.0 (catalog)"})
+    with urllib.request.urlopen(req, timeout=6) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def _nominatim_suggest(q: str):
+    query = q if "москв" in q.lower() or "бутов" in q.lower() else f"{q}, Москва"
+    url = (
+        "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6"
+        "&accept-language=ru&countrycodes=ru&q=" + quote(query)
+    )
+    try:
+        rows = _http_json(url) or []
+    except Exception:
+        return []
+    items = []
+    for row in rows:
+        lat, lng = row.get("lat"), row.get("lon")
+        label = (row.get("display_name") or "").split(", Россия")[0]
+        if not lat or not lng or not label:
+            continue
+        items.append({"label": label, "lat": float(lat), "lng": float(lng)})
+    return items
+
+
+def _photon_suggest(q: str):
     url = (
         "https://photon.komoot.io/api/?q="
         + quote(q)
         + "&lat=55.5477&lon=37.5433&limit=6&lang=ru"
     )
-    req = urllib.request.Request(url, headers={"User-Agent": "VB2Catalog/1.0"})
     try:
-        with urllib.request.urlopen(req, timeout=4) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
+        data = _http_json(url) or {}
     except Exception:
-        return JsonResponse({"items": []})
+        return []
     items = []
     for feature in data.get("features") or []:
         props = feature.get("properties") or {}
@@ -387,4 +416,4 @@ def geo_suggest(request):
         if not label or coords[0] is None:
             continue
         items.append({"label": label, "lat": coords[1], "lng": coords[0]})
-    return JsonResponse({"items": items})
+    return items

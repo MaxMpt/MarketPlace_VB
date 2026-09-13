@@ -90,29 +90,34 @@
     }
   }
   function hideSuggest() { suggest.hidden = true; suggest.innerHTML = ''; }
+  const suggestUrl = "{% url 'geo_suggest' %}";
   address.addEventListener('input', function () {
     clearTimeout(timer);
     const q = address.value.trim();
     if (q.length < 2) { hideSuggest(); return; }
     timer = setTimeout(async function () {
-      const res = await fetch('/geo/suggest/?q=' + encodeURIComponent(q));
-      const data = await res.json();
-      suggest.innerHTML = '';
-      (data.items || []).forEach(function (item) {
-        const li = document.createElement('li');
-        li.textContent = item.label;
-        li.addEventListener('mousedown', function (e) {
-          e.preventDefault();
-          address.value = item.label;
-          latInput.value = item.lat;
-          lngInput.value = item.lng;
-          hideSuggest();
-          updateMap();
+      try {
+        const res = await fetch(suggestUrl + '?q=' + encodeURIComponent(q), { credentials: 'same-origin' });
+        const data = await res.json();
+        suggest.innerHTML = '';
+        (data.items || []).forEach(function (item) {
+          const li = document.createElement('li');
+          li.textContent = item.label;
+          li.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+            address.value = item.label;
+            latInput.value = item.lat;
+            lngInput.value = item.lng;
+            hideSuggest();
+            updateMap();
+          });
+          suggest.appendChild(li);
         });
-        suggest.appendChild(li);
-      });
-      suggest.hidden = !suggest.children.length;
-    }, 250);
+        suggest.hidden = !suggest.children.length;
+      } catch (err) {
+        hideSuggest();
+      }
+    }, 280);
   });
   address.addEventListener('blur', function () { setTimeout(hideSuggest, 150); });
   document.querySelectorAll('input[name=kind]').forEach((el) => el.addEventListener('change', syncKind));
