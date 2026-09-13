@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
 {% block content %}
 <form class="pad add-form" method="post" enctype="multipart/form-data">
   {% csrf_token %}
@@ -21,11 +24,27 @@
       {% endfor %}
     </div>
     <label class="label" for="price">Цена</label>
-    <input id="price" name="price_note" maxlength="40" placeholder="от 1 500 ₽">
+    <input id="price" name="price_note" maxlength="40" placeholder="600 или Бессрочный">
+    <p class="muted tiny">Число станет «от 600 ₽». Текст вроде «Бессрочный» сохранится как есть.</p>
   </div>
 
   <label class="label" for="desc">Описание</label>
   <textarea id="desc" name="description" rows="4" maxlength="600"></textarea>
+
+  <div data-company-only hidden>
+    <label class="label" for="address">Адрес</label>
+    <input id="address" name="address" maxlength="255" placeholder="Необязательно, например Поляны, 5">
+    <p class="label">Открывать маршрут</p>
+    <div class="seg">
+      <label class="on"><input type="radio" name="map_provider" value="yandex" checked> Яндекс</label>
+      <label><input type="radio" name="map_provider" value="google"> Google</label>
+    </div>
+    <p class="label">Точка на карте</p>
+    <p class="muted tiny">Необязательно. Нажмите на карту — поставим метку.</p>
+    <div id="pick-map" class="map-picker"></div>
+    <input type="hidden" name="lat" id="lat">
+    <input type="hidden" name="lng" id="lng">
+  </div>
 
   <p class="label">Фото</p>
   <p class="muted tiny">До 6 снимков — они будут на карточке</p>
@@ -34,16 +53,38 @@
   {% if error %}<p class="error">{{ error }}</p>{% endif %}
   <button class="btn" type="submit">Опубликовать</button>
 </form>
+{% endblock %}
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
   const kindInputs = document.querySelectorAll('input[name=kind]');
   const serviceOnly = document.querySelector('[data-service-only]');
+  const companyOnly = document.querySelector('[data-company-only]');
   const labels = document.querySelectorAll('.seg label');
+  let picker;
   function sync() {
     const company = document.querySelector('input[name=kind]:checked')?.value === 'company';
     if (serviceOnly) serviceOnly.hidden = company;
-    labels.forEach((el) => el.classList.toggle('on', el.querySelector('input').checked));
+    if (companyOnly) companyOnly.hidden = !company;
+    document.querySelectorAll('.seg').forEach((seg) => {
+      seg.querySelectorAll('label').forEach((el) => el.classList.toggle('on', el.querySelector('input').checked));
+    });
+    if (company && picker) setTimeout(() => picker.invalidateSize(), 80);
   }
   kindInputs.forEach((el) => el.addEventListener('change', sync));
+  document.querySelectorAll('input[name=map_provider]').forEach((el) => el.addEventListener('change', sync));
+  const el = document.getElementById('pick-map');
+  if (el && window.L) {
+    picker = L.map(el).setView([55.5477, 37.5433], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' }).addTo(picker);
+    let marker;
+    picker.on('click', function (e) {
+      if (marker) marker.setLatLng(e.latlng);
+      else marker = L.marker(e.latlng).addTo(picker);
+      document.getElementById('lat').value = e.latlng.lat.toFixed(6);
+      document.getElementById('lng').value = e.latlng.lng.toFixed(6);
+    });
+  }
   sync();
 </script>
 {% endblock %}

@@ -6,7 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="{% if theme == 'dark' %}#1c1c1e{% else %}#ffffff{% endif %}">
   <title>{{ title|default:"ВБ2 Каталог" }}</title>
-  <link rel="stylesheet" href="{% static 'catalog/app.css' %}?v=4">
+  <link rel="stylesheet" href="{% static 'catalog/app.css' %}?v=5">
+  {% block extra_head %}{% endblock %}
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -44,6 +45,7 @@
       </a>
     </nav>
   </div>
-  <script src="{% static 'catalog/app.js' %}"></script>
+  <script src="{% static 'catalog/app.js' %}?v=5"></script>
+  {% block extra_js %}{% endblock %}
 </body>
 </html>

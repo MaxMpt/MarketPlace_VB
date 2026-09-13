@@ -37,6 +37,15 @@
     document.documentElement.style.setProperty("--app-height", window.innerHeight + "px");
   }
 
+  document.querySelectorAll("[data-tg-link]").forEach(function (a) {
+    a.addEventListener("click", function (e) {
+      if (tg && tg.openTelegramLink) {
+        e.preventDefault();
+        tg.openTelegramLink(a.href);
+      }
+    });
+  });
+
   document.querySelectorAll("[data-carousel]").forEach(function (root) {
     const scroller = root.querySelector("[data-scroller]");
     const thumbs = root.querySelectorAll("[data-thumb]");

@@ -134,6 +134,12 @@ class RatingReview(models.Model):
         Service, null=True, blank=True, on_delete=models.CASCADE, related_name="reviews"
     )
     create_user = models.ForeignKey(Resident, on_delete=models.PROTECT, related_name="reviews")
+    address = models.CharField(max_length=255, blank=True, default="")
+    lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    map_provider = models.CharField(
+        max_length=8, default="yandex", choices=[("yandex", "Яндекс"), ("google", "Google")]
+    )
     author_name = models.CharField(max_length=64, default="Житель")
     rating = models.SmallIntegerField()
     review_text = models.TextField(blank=True, default="")

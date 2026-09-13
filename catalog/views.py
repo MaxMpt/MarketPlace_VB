@@ -1,10 +1,10 @@
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from .models import Company, Photo, RatingReview, Service, ServiceCategory, UserSettings
-from .utils import save_resized_image
+from .utils import parse_price_input, save_resized_image, telegram_contact_url
 
 
 def _photos():
@@ -54,12 +54,40 @@ def services_list(request):
     )
 
 
+def _contact(request, author, title, kind):
+    if not author or not author.username or author.id == request.resident.id:
+        return ""
+    if kind == "service":
+        text = (
+            f"Здравствуйте! Обращаюсь по услуге «{title}» "
+            f"из каталога двора Восточное Бутово 2. Можно уточнить детали?"
+        )
+    else:
+        text = (
+            f"Здравствуйте! Обращаюсь по компании «{title}» "
+            f"из каталога двора Восточное Бутово 2. Подскажите, пожалуйста."
+        )
+    return telegram_contact_url(author.username, text)
+
+
+def _parse_point(request):
+    try:
+        lat = request.POST.get("lat") or None
+        lng = request.POST.get("lng") or None
+        if lat and lng:
+            return float(lat), float(lng)
+    except (TypeError, ValueError):
+        pass
+    return None, None
+
+
 def service_detail(request, pk):
     service = get_object_or_404(
         Service.objects.alive().select_related("category", "create_user").prefetch_related(_photos()),
         pk=pk,
     )
     reviews = service.reviews.alive().select_related("create_user").prefetch_related(_photos())
+    my_review = reviews.filter(create_user=request.resident).first()
     return render(
         request,
         "catalog/service_detail.html",
@@ -67,6 +95,8 @@ def service_detail(request, pk):
             "service": service,
             "photos": service.photos.alive(),
             "reviews": reviews,
+            "my_review": my_review,
+            "contact_url": _contact(request, service.create_user, service.name, "service"),
             "title": service.name,
             "back": "/services/",
         },
@@ -84,10 +114,11 @@ def companies_list(request):
 
 def company_detail(request, pk):
     company = get_object_or_404(
-        Company.objects.alive().prefetch_related(_photos()),
+        Company.objects.alive().select_related("create_user").prefetch_related(_photos()),
         pk=pk,
     )
     reviews = company.reviews.alive().select_related("create_user")
+    my_review = reviews.filter(create_user=request.resident).first()
     return render(
         request,
         "catalog/company_detail.html",
@@ -95,6 +126,8 @@ def company_detail(request, pk):
             "company": company,
             "photos": company.photos.alive(),
             "reviews": reviews,
+            "my_review": my_review,
+            "contact_url": _contact(request, company.create_user, company.name, "company"),
             "title": company.name,
             "back": "/companies/",
         },
@@ -131,6 +164,7 @@ def toggle_theme(request):
     settings.save(update_fields=["theme", "updated_at"])
     return redirect("profile")
 
+
 @require_POST
 def delete_listing(request):
     kind = request.POST.get("kind")
@@ -165,20 +199,30 @@ def add_listing(request):
             except (ServiceCategory.DoesNotExist, ValueError, TypeError):
                 error = "Выберите категорию"
             else:
+                cents, note = parse_price_input(price_note)
                 service = Service.objects.create(
                     category=category,
                     name=name,
                     description=description,
-                    price_note=price_note,
+                    price_cents=cents,
+                    price_note=note,
                     create_user=request.resident,
                 )
                 _save_photos(files, service=service)
                 return redirect("service_detail", pk=service.pk)
         else:
+            lat, lng = _parse_point(request)
+            provider = request.POST.get("map_provider") or "yandex"
+            if provider not in {"yandex", "google"}:
+                provider = "yandex"
             company = Company.objects.create(
                 name=name,
                 description=description,
                 create_user=request.resident,
+                address=(request.POST.get("address") or "").strip()[:255],
+                lat=lat,
+                lng=lng,
+                map_provider=provider,
             )
             _save_photos(files, company=company)
             return redirect("company_detail", pk=company.pk)
@@ -205,22 +249,28 @@ def add_review(request):
     user = request.resident
     if service_id:
         service = get_object_or_404(Service.objects.alive(), pk=service_id)
-        RatingReview.objects.create(
+        review, _ = RatingReview.objects.update_or_create(
             service=service,
             create_user=user,
-            author_name=user.display_name,
-            rating=rating,
-            review_text=text,
+            deleted_at=None,
+            defaults={
+                "author_name": user.display_name,
+                "rating": rating,
+                "review_text": text,
+            },
         )
         service.recalc_rating()
         return redirect("service_detail", pk=service.pk)
     company = get_object_or_404(Company.objects.alive(), pk=company_id)
-    RatingReview.objects.create(
+    RatingReview.objects.update_or_create(
         company=company,
         create_user=user,
-        author_name=user.display_name,
-        rating=rating,
-        review_text=text,
+        deleted_at=None,
+        defaults={
+            "author_name": user.display_name,
+            "rating": rating,
+            "review_text": text,
+        },
     )
     company.recalc_rating()
     return redirect("company_detail", pk=company.pk)

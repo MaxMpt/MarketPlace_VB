@@ -2,6 +2,7 @@
 {% load catalog_tags %}
 {% block content %}
 {% include "catalog/_carousel.html" %}
+{% include "catalog/_contact.html" with author=service.create_user %}
 <div class="pad">
   <p class="eyebrow muted">{{ service.category.title }}{% if service.create_user %} · {{ service.create_user.display_name }}{% endif %}</p>
   <h2 class="detail-title">{{ service.name }}</h2>

@@ -20,7 +20,7 @@ class ServiceAdmin(admin.ModelAdmin):
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
-    list_display = ("name", "rating_value", "rating_count")
+    list_display = ("name", "address", "rating_value", "rating_count")
 
 
 admin.site.register(RatingReview)

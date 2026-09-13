@@ -1,4 +1,6 @@
 from io import BytesIO
+import re
+from urllib.parse import quote
 
 from django.core.files.base import ContentFile
 from PIL import Image
@@ -26,3 +28,20 @@ def save_resized_image(django_file, name: str) -> ContentFile:
     buf = BytesIO()
     image.save(buf, format="JPEG", quality=72)
     return ContentFile(buf.getvalue(), name=name.rsplit(".", 1)[0][:40] + ".jpg")
+
+
+def parse_price_input(raw: str):
+    text = (raw or "").strip()
+    if not text:
+        return None, ""
+    stripped = re.sub(r"(?i)руб(?:лей|ля|\.)?|₽|от", "", text)
+    stripped = re.sub(r"[\s\u00a0]", "", stripped)
+    if stripped.isdigit():
+        return int(stripped) * 100, ""
+    return None, text
+
+
+def telegram_contact_url(username: str, text: str) -> str:
+    if not username:
+        return ""
+    return f"https://t.me/{username}?text={quote(text)}"

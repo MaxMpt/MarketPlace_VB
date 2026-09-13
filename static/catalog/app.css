@@ -145,6 +145,23 @@ button, input, textarea { font: inherit; font-size: 16px; }
 .card-meta { display: flex; align-items: center; gap: .4rem; margin-top: .4rem; font-size: 12px; color: var(--muted); }
 .card-price { margin: .35rem 0 0; font-size: 14px; font-weight: 500; }
 .card-del { position: absolute; top: .5rem; right: .5rem; z-index: 2; margin: 0; }
+.card-del button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  height: 28px !important;
+  width: auto !important;
+  padding: 0 10px !important;
+  margin: 0;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: rgba(229, 57, 53, .16) !important;
+  color: #e53935 !important;
+  font: 600 11px/1 "SF Pro Text", "Segoe UI", system-ui, sans-serif !important;
+  cursor: pointer;
+}
 .stars { display: inline-flex; color: var(--star); gap: 1px; }
 .pad { padding: 1rem; }
 .pad-top { padding: 1rem 1rem 0; }
@@ -182,6 +199,8 @@ button, input, textarea { font: inherit; font-size: 16px; }
 .rate { display: flex; gap: .5rem; color: var(--star); }
 .rate input { display: none; }
 .rate label { font-size: 22px; opacity: .35; }
+.rate label:has(input:checked), .rate label:has(input:checked) ~ label { opacity: .35; }
+.rate label:has(input:checked), .rate label:has(input:checked) { opacity: 1; }
 .profile-head { display: flex; gap: 1rem; align-items: center; }
 .avatar { width: 5rem; height: 5rem; border-radius: .75rem; object-fit: cover; background: var(--fg); }
 .profile-name { margin: 0; font-size: 1.125rem; font-weight: 600; }
@@ -204,6 +223,41 @@ button, input, textarea { font: inherit; font-size: 16px; }
 .seg input { display: none; }
 .add-form .btn { margin-top: 1.25rem; }
 .error { color: var(--danger); font-size: 14px; }
+.btn-contact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  height: 3rem;
+  width: 100%;
+  margin-top: 1rem;
+  border: 0;
+  border-radius: .75rem;
+  background: #229ed9;
+  color: #fff;
+  font-weight: 600;
+}
+.contact-hint { margin: .45rem 0 0; }
+.addr { margin: .5rem 0 0; font-size: 14px; color: var(--muted); }
+.map-card {
+  margin-top: 1rem;
+  border-radius: .75rem;
+  overflow: hidden;
+  box-shadow: var(--card);
+  background: var(--bg);
+}
+.map-preview, .map-picker { height: 11rem; width: 100%; background: var(--bg); }
+.map-picker { border-radius: .75rem; overflow: hidden; }
+.map-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.75rem;
+  background: var(--primary);
+  color: var(--primary-fg);
+  font-size: 14px;
+  font-weight: 600;
+}
 .rate label { opacity: .35; cursor: pointer; }
 .rate label:has(~ label input:checked) { opacity: 1; }
 .rate label:has(input:checked) { opacity: 1; }
