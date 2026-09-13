@@ -32,13 +32,13 @@
   <div class="stack">
     {% for s in listings %}
       {% url 'service_detail' s.pk as card_url %}
-      <div class="card-row">
+      <div class="card-own">
         {% include "catalog/_card.html" with href=card_url name=s.name subtitle=s.category.title rating=s.rating_value count=s.rating_count cover=s.cover price=s.price_label %}
-        <form method="post" action="{% url 'delete_listing' %}" onsubmit="return confirm('Скрыть объявление? Соседи его больше не увидят.');">
+        <form class="card-del" method="post" action="{% url 'delete_listing' %}" onsubmit="return confirm('Скрыть объявление? Соседи его больше не увидят.');">
           {% csrf_token %}
           <input type="hidden" name="kind" value="service">
           <input type="hidden" name="pk" value="{{ s.pk }}">
-          <button type="submit" class="btn-delete">Удалить</button>
+          <button type="submit">Удалить</button>
         </form>
       </div>
     {% empty %}
@@ -53,13 +53,13 @@
   <div class="stack">
     {% for c in my_companies %}
       {% url 'company_detail' c.pk as card_url %}
-      <div class="card-row">
+      <div class="card-own">
         {% include "catalog/_card.html" with href=card_url name=c.name subtitle=c.description rating=c.rating_value count=c.rating_count cover=c.cover %}
-        <form method="post" action="{% url 'delete_listing' %}" onsubmit="return confirm('Скрыть компанию? Соседи её больше не увидят.');">
+        <form class="card-del" method="post" action="{% url 'delete_listing' %}" onsubmit="return confirm('Скрыть компанию? Соседи её больше не увидят.');">
           {% csrf_token %}
           <input type="hidden" name="kind" value="company">
           <input type="hidden" name="pk" value="{{ c.pk }}">
-          <button type="submit" class="btn-delete">Удалить</button>
+          <button type="submit">Удалить</button>
         </form>
       </div>
     {% endfor %}

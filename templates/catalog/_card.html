@@ -1,17 +1,19 @@
 {% load catalog_tags %}
-<a class="card" href="{{ href }}">
-  <div class="card-img">
-    {% if cover %}<img src="{{ cover }}" alt="">{% endif %}
-  </div>
-  <div class="card-body">
-    <p class="card-title">{{ name }}</p>
-    {% if subtitle %}<p class="card-sub">{{ subtitle }}</p>{% endif %}
-    <div class="card-meta">
-      {% stars rating %}
-      <span>
-        {% if count %}{{ rating|ru_rating }} · {{ count }}{% else %}пока нет оценок{% endif %}
-      </span>
+<article class="card">
+  <a class="card-hit" href="{{ href }}">
+    <div class="card-img">
+      {% if cover %}<img src="{{ cover }}" alt="">{% endif %}
     </div>
-    {% if price %}<p class="card-price">{{ price }}</p>{% endif %}
-  </div>
-</a>
+    <div class="card-body">
+      <p class="card-title">{{ name }}</p>
+      {% if subtitle %}<p class="card-sub">{{ subtitle }}</p>{% endif %}
+      <div class="card-meta">
+        {% stars rating %}
+        <span>
+          {% if count %}{{ rating|ru_rating }} · {{ count }}{% else %}пока нет оценок{% endif %}
+        </span>
+      </div>
+      {% if price %}<p class="card-price">{{ price }}</p>{% endif %}
+    </div>
+  </a>
+</article>
