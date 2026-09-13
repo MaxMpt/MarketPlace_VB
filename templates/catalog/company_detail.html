@@ -1,8 +1,5 @@
 {% extends "base.html" %}
 {% load catalog_tags %}
-{% block extra_head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-{% endblock %}
 {% block content %}
 {% include "catalog/_carousel.html" %}
 <div class="pad">
@@ -15,12 +12,9 @@
   </div>
   {% if company.description %}<p class="lead">{{ company.description }}</p>{% endif %}
   {% if company.address %}<p class="addr">{{ company.address }}</p>{% endif %}
-  {% include "catalog/_contact.html" with author=company.create_user %}
-  {% if company.has_point or company.address %}
+  {% if company.embed_url %}
     <div class="map-card">
-      {% if company.has_point %}
-        <div class="map-preview" data-map data-lat="{{ company.lat }}" data-lng="{{ company.lng }}"></div>
-      {% endif %}
+      <iframe class="map-preview" src="{{ company.embed_url }}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
       <a class="map-cta" href="{{ company.route_url }}" target="_blank" rel="noopener">{{ company.maps_cta }}</a>
     </div>
   {% endif %}
@@ -52,17 +46,4 @@
     <button class="btn" type="submit">{% if my_review %}Сохранить оценку{% else %}Опубликовать{% endif %}</button>
   </form>
 </section>
-{% endblock %}
-{% block extra_js %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-document.querySelectorAll("[data-map]").forEach(function (el) {
-  if (!window.L) return;
-  const lat = parseFloat(el.dataset.lat);
-  const lng = parseFloat(el.dataset.lng);
-  const map = L.map(el, { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false }).setView([lat, lng], 16);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-  L.marker([lat, lng]).addTo(map);
-});
-</script>
 {% endblock %}

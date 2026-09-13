@@ -1,7 +1,4 @@
 {% extends "base.html" %}
-{% block extra_head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-{% endblock %}
 {% block content %}
 <form class="pad add-form" method="post" enctype="multipart/form-data">
   {% csrf_token %}
@@ -33,15 +30,17 @@
 
   <div data-company-only hidden>
     <label class="label" for="address">Адрес</label>
-    <input id="address" name="address" maxlength="255" placeholder="Необязательно, например Поляны, 5">
+    <div class="addr-wrap">
+      <input id="address" name="address" maxlength="255" placeholder="Начните вводить, например Поляны" autocomplete="off">
+      <ul id="addr-suggest" class="suggest" hidden></ul>
+    </div>
     <p class="label">Открывать маршрут</p>
     <div class="seg">
       <label class="on"><input type="radio" name="map_provider" value="yandex" checked> Яндекс</label>
       <label><input type="radio" name="map_provider" value="google"> Google</label>
     </div>
-    <p class="label">Точка на карте</p>
-    <p class="muted tiny">Необязательно. Нажмите на карту — поставим метку.</p>
-    <div id="pick-map" class="map-picker"></div>
+    <p class="muted tiny">По умолчанию Яндекс. Карта подставится по адресу.</p>
+    <iframe id="pick-frame" class="map-picker" title="Карта" src="https://yandex.ru/map-widget/v1/?ll=37.5433,55.5477&z=15" loading="lazy"></iframe>
     <input type="hidden" name="lat" id="lat">
     <input type="hidden" name="lng" id="lng">
   </div>
@@ -55,36 +54,73 @@
 </form>
 {% endblock %}
 {% block extra_js %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  const kindInputs = document.querySelectorAll('input[name=kind]');
   const serviceOnly = document.querySelector('[data-service-only]');
   const companyOnly = document.querySelector('[data-company-only]');
-  const labels = document.querySelectorAll('.seg label');
-  let picker;
-  function sync() {
+  const address = document.getElementById('address');
+  const suggest = document.getElementById('addr-suggest');
+  const frame = document.getElementById('pick-frame');
+  const latInput = document.getElementById('lat');
+  const lngInput = document.getElementById('lng');
+  let timer;
+
+  function provider() {
+    return document.querySelector('input[name=map_provider]:checked')?.value || 'yandex';
+  }
+  function syncKind() {
     const company = document.querySelector('input[name=kind]:checked')?.value === 'company';
     if (serviceOnly) serviceOnly.hidden = company;
     if (companyOnly) companyOnly.hidden = !company;
     document.querySelectorAll('.seg').forEach((seg) => {
       seg.querySelectorAll('label').forEach((el) => el.classList.toggle('on', el.querySelector('input').checked));
     });
-    if (company && picker) setTimeout(() => picker.invalidateSize(), 80);
+    if (company) updateMap();
   }
-  kindInputs.forEach((el) => el.addEventListener('change', sync));
-  document.querySelectorAll('input[name=map_provider]').forEach((el) => el.addEventListener('change', sync));
-  const el = document.getElementById('pick-map');
-  if (el && window.L) {
-    picker = L.map(el).setView([55.5477, 37.5433], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' }).addTo(picker);
-    let marker;
-    picker.on('click', function (e) {
-      if (marker) marker.setLatLng(e.latlng);
-      else marker = L.marker(e.latlng).addTo(picker);
-      document.getElementById('lat').value = e.latlng.lat.toFixed(6);
-      document.getElementById('lng').value = e.latlng.lng.toFixed(6);
-    });
+  function updateMap() {
+    const lat = latInput.value;
+    const lng = lngInput.value;
+    const q = encodeURIComponent(address.value || '');
+    if (provider() === 'google') {
+      if (lat && lng) frame.src = `https://maps.google.com/maps?q=${lat},${lng}&hl=ru&z=16&output=embed`;
+      else if (address.value) frame.src = `https://maps.google.com/maps?q=${q}&hl=ru&z=16&output=embed`;
+      else frame.src = 'https://maps.google.com/maps?q=55.5477,37.5433&hl=ru&z=15&output=embed';
+    } else {
+      if (lat && lng) frame.src = `https://yandex.ru/map-widget/v1/?ll=${lng},${lat}&pt=${lng},${lat}&z=16&l=map`;
+      else if (address.value) frame.src = `https://yandex.ru/map-widget/v1/?text=${q}&z=16`;
+      else frame.src = 'https://yandex.ru/map-widget/v1/?ll=37.5433,55.5477&z=15';
+    }
   }
-  sync();
+  function hideSuggest() { suggest.hidden = true; suggest.innerHTML = ''; }
+  address.addEventListener('input', function () {
+    clearTimeout(timer);
+    const q = address.value.trim();
+    if (q.length < 2) { hideSuggest(); return; }
+    timer = setTimeout(async function () {
+      const res = await fetch('/geo/suggest/?q=' + encodeURIComponent(q));
+      const data = await res.json();
+      suggest.innerHTML = '';
+      (data.items || []).forEach(function (item) {
+        const li = document.createElement('li');
+        li.textContent = item.label;
+        li.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          address.value = item.label;
+          latInput.value = item.lat;
+          lngInput.value = item.lng;
+          hideSuggest();
+          updateMap();
+        });
+        suggest.appendChild(li);
+      });
+      suggest.hidden = !suggest.children.length;
+    }, 250);
+  });
+  address.addEventListener('blur', function () { setTimeout(hideSuggest, 150); });
+  document.querySelectorAll('input[name=kind]').forEach((el) => el.addEventListener('change', syncKind));
+  document.querySelectorAll('input[name=map_provider]').forEach((el) => el.addEventListener('change', function () {
+    document.querySelectorAll('input[name=map_provider]').forEach((r) => r.parentElement.classList.toggle('on', r.checked));
+    updateMap();
+  }));
+  syncKind();
 </script>
 {% endblock %}

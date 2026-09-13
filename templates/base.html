@@ -6,12 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="{% if theme == 'dark' %}#1c1c1e{% else %}#ffffff{% endif %}">
   <title>{{ title|default:"ВБ2 Каталог" }}</title>
-  <link rel="stylesheet" href="{% static 'catalog/app.css' %}?v=5">
+  <link rel="stylesheet" href="{% static 'catalog/app.css' %}?v=6">
   {% block extra_head %}{% endblock %}
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
   <div class="app-shell">
+    {% if back or tab != 'home' %}
     <header class="app-header">
       {% if back %}
         <a class="icon-btn" href="{{ back }}" aria-label="Назад">
@@ -23,6 +24,7 @@
       <h1>{{ title }}</h1>
       <span class="icon-btn"></span>
     </header>
+    {% endif %}
     <main class="app-main">
       {% block content %}{% endblock %}
     </main>
@@ -45,7 +47,7 @@
       </a>
     </nav>
   </div>
-  <script src="{% static 'catalog/app.js' %}?v=5"></script>
+  <script src="{% static 'catalog/app.js' %}?v=6"></script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -14,6 +14,11 @@
   <div><strong>{{ reviews|length }}</strong><span>Мои отзывы</span></div>
 </div>
 <div class="pad"><a class="btn" href="{% url 'add' %}">+ Новая карточка</a></div>
+<div class="pad" style="padding-top:0">
+  <a class="btn-contact" href="{{ support_url }}" data-tg-link>
+    Написать в поддержку
+  </a>
+</div>
 
 <section class="section">
   <h3>Настройки</h3>

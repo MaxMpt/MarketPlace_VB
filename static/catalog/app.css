@@ -246,8 +246,24 @@ button, input, textarea { font: inherit; font-size: 16px; }
   box-shadow: var(--card);
   background: var(--bg);
 }
-.map-preview, .map-picker { height: 11rem; width: 100%; background: var(--bg); }
-.map-picker { border-radius: .75rem; overflow: hidden; }
+.map-preview, .map-picker { height: 11rem; width: 100%; background: var(--bg); border: 0; display: block; }
+.map-picker { border-radius: .75rem; overflow: hidden; margin-top: .75rem; }
+.addr-wrap { position: relative; }
+.suggest {
+  position: absolute;
+  left: 0; right: 0; top: 100%;
+  z-index: 8;
+  margin: .25rem 0 0;
+  padding: 0;
+  list-style: none;
+  background: var(--surface);
+  border-radius: .75rem;
+  box-shadow: var(--card);
+  max-height: 12rem;
+  overflow: auto;
+}
+.suggest li { padding: .7rem .85rem; font-size: 14px; border-bottom: 1px solid var(--border); }
+.suggest li:last-child { border-bottom: 0; }
 .map-cta {
   display: flex;
   align-items: center;
