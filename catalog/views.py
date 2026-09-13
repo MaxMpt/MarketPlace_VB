@@ -1,7 +1,9 @@
 from django.db.models import Prefetch
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
+from urllib.parse import quote
 
 from .models import Company, Photo, RatingReview, Service, ServiceCategory, UserSettings
 from .utils import parse_price_input, save_resized_image, telegram_contact_url
@@ -283,3 +285,39 @@ def _save_photos(files, service=None, company=None):
         photo = Photo(service=service, company=company, sort_order=index)
         content = save_resized_image(uploaded, uploaded.name)
         photo.image.save(content.name, content, save=True)
+
+
+@require_GET
+def geo_suggest(request):
+    q = (request.GET.get("q") or "").strip()
+    if len(q) < 2:
+        return JsonResponse({"items": []})
+    import json
+    import urllib.request
+
+    url = (
+        "https://photon.komoot.io/api/?q="
+        + quote(q)
+        + "&lat=55.5477&lon=37.5433&limit=6&lang=ru"
+    )
+    req = urllib.request.Request(url, headers={"User-Agent": "VB2Catalog/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception:
+        return JsonResponse({"items": []})
+    items = []
+    for feature in data.get("features") or []:
+        props = feature.get("properties") or {}
+        coords = (feature.get("geometry") or {}).get("coordinates") or [None, None]
+        parts = [
+            props.get("name"),
+            " ".join(p for p in (props.get("street"), props.get("housenumber")) if p),
+            props.get("district"),
+            props.get("city") or props.get("town") or props.get("village"),
+        ]
+        label = ", ".join(p for p in parts if p)
+        if not label or coords[0] is None:
+            continue
+        items.append({"label": label, "lat": coords[1], "lng": coords[0]})
+    return JsonResponse({"items": items})
