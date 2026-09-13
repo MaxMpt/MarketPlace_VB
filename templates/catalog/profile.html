@@ -38,7 +38,7 @@
           {% csrf_token %}
           <input type="hidden" name="kind" value="service">
           <input type="hidden" name="pk" value="{{ s.pk }}">
-          <button type="submit">Удалить</button>
+          <button type="submit" style="appearance:none;-webkit-appearance:none;border:0;border-radius:999px;height:28px;padding:0 10px;background:rgba(229,57,53,.16);color:#e53935;font:600 11px/1 system-ui,sans-serif">Удалить</button>
         </form>
       </div>
     {% empty %}
@@ -59,7 +59,7 @@
           {% csrf_token %}
           <input type="hidden" name="kind" value="company">
           <input type="hidden" name="pk" value="{{ c.pk }}">
-          <button type="submit">Удалить</button>
+          <button type="submit" style="appearance:none;-webkit-appearance:none;border:0;border-radius:999px;height:28px;padding:0 10px;background:rgba(229,57,53,.16);color:#e53935;font:600 11px/1 system-ui,sans-serif">Удалить</button>
         </form>
       </div>
     {% endfor %}
