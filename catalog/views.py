@@ -121,7 +121,7 @@ def company_detail(request, pk):
         Company.objects.alive().select_related("create_user").prefetch_related(_photos()),
         pk=pk,
     )
-    reviews = company.reviews.alive().select_related("create_user")
+    reviews = company.reviews.alive().select_related("create_user").prefetch_related(_photos())
     my_review = reviews.filter(create_user=request.resident).first()
     return render(
         request,
@@ -301,6 +301,7 @@ def add_review(request):
     service_id = request.POST.get("service_id")
     company_id = request.POST.get("company_id")
     user = request.resident
+    files = request.FILES.getlist("photos")[:3]
     if service_id:
         service = get_object_or_404(Service.objects.alive(), pk=service_id)
         review, _ = RatingReview.objects.update_or_create(
@@ -313,11 +314,14 @@ def add_review(request):
                 "review_text": text,
             },
         )
+        if files:
+            Photo.objects.filter(review=review, deleted_at__isnull=True).update(deleted_at=timezone.now())
+            _save_photos(files, review=review)
         service.recalc_rating()
         _notify_review(service.create_user, f"услуге «{service.name}»", user, rating, text)
         return redirect("service_detail", pk=service.pk)
     company = get_object_or_404(Company.objects.alive(), pk=company_id)
-    RatingReview.objects.update_or_create(
+    review, _ = RatingReview.objects.update_or_create(
         company=company,
         create_user=user,
         deleted_at=None,
@@ -327,6 +331,9 @@ def add_review(request):
             "review_text": text,
         },
     )
+    if files:
+        Photo.objects.filter(review=review, deleted_at__isnull=True).update(deleted_at=timezone.now())
+        _save_photos(files, review=review)
     company.recalc_rating()
     _notify_review(company.create_user, f"компании «{company.name}»", user, rating, text)
     return redirect("company_detail", pk=company.pk)
@@ -345,11 +352,11 @@ def _notify_review(owner, target, reviewer, rating, text):
     )
 
 
-def _save_photos(files, service=None, company=None):
+def _save_photos(files, service=None, company=None, review=None):
     for index, uploaded in enumerate(files):
         if not getattr(uploaded, "content_type", "").startswith("image/"):
             continue
-        photo = Photo(service=service, company=company, sort_order=index)
+        photo = Photo(service=service, company=company, review=review, sort_order=index)
         content = save_resized_image(uploaded, uploaded.name)
         photo.image.save(content.name, content, save=True)
 

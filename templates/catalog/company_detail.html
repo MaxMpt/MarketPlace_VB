@@ -38,6 +38,9 @@
           {% stars r.rating 12 %}
         </div>
         {% if r.review_text %}<p>{{ r.review_text }}</p>{% endif %}
+        {% with photo=r.photos.all.0 %}
+          {% if photo %}<img class="review-photo" src="{{ photo.src }}" alt="">{% endif %}
+        {% endwith %}
         {% if is_admin %}
           <form method="post" action="{% url 'delete_review' %}">
             {% csrf_token %}
@@ -48,7 +51,7 @@
       </article>
     {% endfor %}
   </div>
-  <form class="review-form" method="post" action="{% url 'add_review' %}">
+  <form class="review-form" method="post" action="{% url 'add_review' %}" enctype="multipart/form-data">
     {% csrf_token %}
     <input type="hidden" name="company_id" value="{{ company.pk }}">
     <p class="label">{% if my_review %}Ваша оценка — можно изменить{% else %}Ваша оценка{% endif %}</p>
@@ -59,6 +62,9 @@
     </div>
     <p class="muted tiny">Подпись из Telegram: {{ resident.display_name }}</p>
     <textarea name="text" rows="3" maxlength="800" placeholder="Коротко, по делу">{{ my_review.review_text }}</textarea>
+    <p class="label">Фото</p>
+    <p class="muted tiny">До 3 снимков, по желанию</p>
+    <input type="file" name="photos" accept="image/*" multiple>
     <button class="btn" type="submit">{% if my_review %}Сохранить оценку{% else %}Опубликовать{% endif %}</button>
   </form>
 </section>
