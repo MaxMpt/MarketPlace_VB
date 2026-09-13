@@ -1,6 +1,7 @@
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
+from django.utils import timezone
 
 from .models import Company, Photo, RatingReview, Service, ServiceCategory, UserSettings
 from .utils import save_resized_image
@@ -128,6 +129,21 @@ def toggle_theme(request):
     settings, _ = UserSettings.objects.get_or_create(user=request.resident)
     settings.theme = "light" if settings.theme == "dark" else "dark"
     settings.save(update_fields=["theme", "updated_at"])
+    return redirect("profile")
+
+@require_POST
+def delete_listing(request):
+    kind = request.POST.get("kind")
+    pk = request.POST.get("pk")
+    user = request.resident
+    if kind == "service":
+        item = get_object_or_404(Service.objects.alive(), pk=pk, create_user=user)
+    elif kind == "company":
+        item = get_object_or_404(Company.objects.alive(), pk=pk, create_user=user)
+    else:
+        return redirect("profile")
+    item.deleted_at = timezone.now()
+    item.save(update_fields=["deleted_at"])
     return redirect("profile")
 
 

@@ -17,6 +17,7 @@ urlpatterns = [
     path("companies/<int:pk>/", views.company_detail, name="company_detail"),
     path("profile/", views.profile, name="profile"),
     path("profile/theme/", views.toggle_theme, name="toggle_theme"),
+    path("profile/delete/", views.delete_listing, name="delete_listing"),
     path("add/", views.add_listing, name="add"),
     path("reviews/add/", views.add_review, name="add_review"),
 ]
