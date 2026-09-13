@@ -1,3 +1,4 @@
+
 def miniapp(request):
     path = request.path
     if path.startswith("/companies"):
@@ -12,4 +13,5 @@ def miniapp(request):
         "resident": getattr(request, "resident", None),
         "theme": getattr(request, "theme", "light"),
         "tab": tab,
+        "is_admin": getattr(request, "is_admin", False),
     }

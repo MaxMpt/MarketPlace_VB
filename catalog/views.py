@@ -6,6 +6,7 @@ from django.views.decorators.http import require_GET, require_POST
 from urllib.parse import quote
 
 from .models import Company, Photo, RatingReview, Service, ServiceCategory, UserSettings
+from .notify import is_admin, login_of, notify_admins, send_telegram, stars_word
 from .utils import parse_price_input, save_resized_image, telegram_contact_url
 
 
@@ -99,6 +100,7 @@ def service_detail(request, pk):
             "reviews": reviews,
             "my_review": my_review,
             "contact_url": _contact(request, service.create_user, service.name, "service"),
+            "is_admin": is_admin(request.resident),
             "title": service.name,
             "back": "/services/",
         },
@@ -129,7 +131,7 @@ def company_detail(request, pk):
             "photos": company.photos.alive(),
             "reviews": reviews,
             "my_review": my_review,
-            "contact_url": _contact(request, company.create_user, company.name, "company"),
+            "is_admin": is_admin(request.resident),
             "title": company.name,
             "back": "/companies/",
         },
@@ -146,6 +148,7 @@ def profile(request):
     )
     companies = Company.objects.alive().filter(create_user=user).prefetch_related(_photos())
     reviews = RatingReview.objects.alive().filter(create_user=user).select_related("service", "company")
+    prefs, _ = UserSettings.objects.get_or_create(user=user)
     return render(
         request,
         "catalog/profile.html",
@@ -155,6 +158,11 @@ def profile(request):
             "reviews": reviews,
             "listing_count": listings.count() + companies.count(),
             "title": "Профиль",
+            "notify_reviews": prefs.notify_reviews,
+            "support_url": telegram_contact_url(
+                "ima_ecosystem",
+                "Здравствуйте! Нашёл баг в каталоге двора Восточное Бутово 2.",
+            ),
         },
     )
 
@@ -168,19 +176,57 @@ def toggle_theme(request):
 
 
 @require_POST
+def toggle_notify(request):
+    settings_row, _ = UserSettings.objects.get_or_create(user=request.resident)
+    settings_row.notify_reviews = not settings_row.notify_reviews
+    settings_row.save(update_fields=["notify_reviews", "updated_at"])
+    return redirect("profile")
+
+
+@require_POST
 def delete_listing(request):
     kind = request.POST.get("kind")
     pk = request.POST.get("pk")
     user = request.resident
+    admin = is_admin(user)
     if kind == "service":
-        item = get_object_or_404(Service.objects.alive(), pk=pk, create_user=user)
+        qs = Service.objects.alive()
+        item = get_object_or_404(qs, pk=pk) if admin else get_object_or_404(qs, pk=pk, create_user=user)
+        label = f"услуга «{item.name}»"
     elif kind == "company":
-        item = get_object_or_404(Company.objects.alive(), pk=pk, create_user=user)
+        qs = Company.objects.alive()
+        item = get_object_or_404(qs, pk=pk) if admin else get_object_or_404(qs, pk=pk, create_user=user)
+        label = f"компания «{item.name}»"
     else:
         return redirect("profile")
     item.deleted_at = timezone.now()
     item.save(update_fields=["deleted_at"])
+    if admin and item.create_user_id and item.create_user_id != user.id:
+        send_telegram(
+            item.create_user_id,
+            f"Ваша {label} удалена администратором. "
+            f"Если это ошибка — напишите в поддержку: https://t.me/ima_ecosystem",
+        )
+    if admin and not (item.create_user_id == user.id):
+        nxt = request.POST.get("next") or ("/services/" if kind == "service" else "/companies/")
+        return redirect(nxt)
     return redirect("profile")
+
+
+@require_POST
+def delete_review(request):
+    if not is_admin(request.resident):
+        return redirect("home")
+    review = get_object_or_404(RatingReview.objects.alive(), pk=request.POST.get("pk"))
+    review.deleted_at = timezone.now()
+    review.save(update_fields=["deleted_at"])
+    if review.service_id:
+        review.service.recalc_rating()
+        return redirect("service_detail", pk=review.service_id)
+    if review.company_id:
+        review.company.recalc_rating()
+        return redirect("company_detail", pk=review.company_id)
+    return redirect("home")
 
 
 def add_listing(request):
@@ -211,6 +257,9 @@ def add_listing(request):
                     create_user=request.resident,
                 )
                 _save_photos(files, service=service)
+                notify_admins(
+                    f"Новая услуга «{service.name}» от {login_of(request.resident)}"
+                )
                 return redirect("service_detail", pk=service.pk)
         else:
             lat, lng = _parse_point(request)
@@ -227,6 +276,9 @@ def add_listing(request):
                 map_provider=provider,
             )
             _save_photos(files, company=company)
+            notify_admins(
+                f"Новая компания «{company.name}» от {login_of(request.resident)}"
+            )
             return redirect("company_detail", pk=company.pk)
     return render(
         request,
@@ -262,6 +314,7 @@ def add_review(request):
             },
         )
         service.recalc_rating()
+        _notify_review(service.create_user, f"услуге «{service.name}»", user, rating, text)
         return redirect("service_detail", pk=service.pk)
     company = get_object_or_404(Company.objects.alive(), pk=company_id)
     RatingReview.objects.update_or_create(
@@ -275,7 +328,21 @@ def add_review(request):
         },
     )
     company.recalc_rating()
+    _notify_review(company.create_user, f"компании «{company.name}»", user, rating, text)
     return redirect("company_detail", pk=company.pk)
+
+
+def _notify_review(owner, target, reviewer, rating, text):
+    if not owner or owner.id == reviewer.id:
+        return
+    prefs = UserSettings.objects.filter(user=owner).first()
+    if prefs and not prefs.notify_reviews:
+        return
+    comment = f"\nКомментарий: {text}" if text else ""
+    send_telegram(
+        owner.id,
+        f"Вашей {target} пользователь {reviewer.display_name} поставил {stars_word(rating)}.{comment}",
+    )
 
 
 def _save_photos(files, service=None, company=None):

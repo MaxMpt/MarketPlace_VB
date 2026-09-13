@@ -2,7 +2,6 @@
 {% load catalog_tags %}
 {% block content %}
 {% include "catalog/_carousel.html" %}
-{% include "catalog/_contact.html" with author=service.create_user %}
 <div class="pad">
   <p class="eyebrow muted">{{ service.category.title }}{% if service.create_user %} · {{ service.create_user.display_name }}{% endif %}</p>
   <h2 class="detail-title">{{ service.name }}</h2>
@@ -14,6 +13,16 @@
   </div>
   <p class="price">{{ service.price_label }}</p>
   {% if service.description %}<p class="lead">{{ service.description }}</p>{% endif %}
+  {% include "catalog/_contact.html" with author=service.create_user %}
+  {% if is_admin %}
+    <form method="post" action="{% url 'delete_listing' %}" onsubmit="return confirm('Удалить услугу и уведомить автора?');">
+      {% csrf_token %}
+      <input type="hidden" name="kind" value="service">
+      <input type="hidden" name="pk" value="{{ service.pk }}">
+      <input type="hidden" name="next" value="/services/">
+      <button type="submit" class="btn-admin-del">Удалить как админ</button>
+    </form>
+  {% endif %}
 </div>
 <section class="section">
   <h3>Отзывы</h3>
@@ -28,6 +37,13 @@
         {% with photo=r.photos.all.0 %}
           {% if photo %}<img class="review-photo" src="{{ photo.src }}" alt="">{% endif %}
         {% endwith %}
+        {% if is_admin %}
+          <form method="post" action="{% url 'delete_review' %}">
+            {% csrf_token %}
+            <input type="hidden" name="pk" value="{{ r.pk }}">
+            <button type="submit" class="btn-admin-del">Удалить отзыв</button>
+          </form>
+        {% endif %}
       </article>
     {% empty %}
       <p class="muted">Пока никто не написал.</p>
@@ -36,15 +52,15 @@
   <form class="review-form" method="post" action="{% url 'add_review' %}">
     {% csrf_token %}
     <input type="hidden" name="service_id" value="{{ service.pk }}">
-    <p class="label">Ваша оценка</p>
+    <p class="label">{% if my_review %}Ваша оценка — можно изменить{% else %}Ваша оценка{% endif %}</p>
     <div class="rate">
       {% for n in "12345"|make_list %}
-        <label><input type="radio" name="rating" value="{{ forloop.counter }}" {% if forloop.counter == 5 %}checked{% endif %}> ★</label>
+        <label><input type="radio" name="rating" value="{{ forloop.counter }}" {% if my_review and forloop.counter == my_review.rating or not my_review and forloop.counter == 5 %}checked{% endif %}> ★</label>
       {% endfor %}
     </div>
-    <p class="muted tiny">Подпись: {{ resident.display_name }}</p>
-    <textarea name="text" rows="3" maxlength="800" placeholder="Коротко, по делу"></textarea>
-    <button class="btn" type="submit">Опубликовать</button>
+    <p class="muted tiny">Подпись из Telegram: {{ resident.display_name }}</p>
+    <textarea name="text" rows="3" maxlength="800" placeholder="Коротко, по делу">{{ my_review.review_text }}</textarea>
+    <button class="btn" type="submit">{% if my_review %}Сохранить оценку{% else %}Опубликовать{% endif %}</button>
   </form>
 </section>
 {% endblock %}

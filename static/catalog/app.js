@@ -39,9 +39,13 @@
 
   document.querySelectorAll("[data-tg-link]").forEach(function (a) {
     a.addEventListener("click", function (e) {
-      if (tg && tg.openTelegramLink) {
-        e.preventDefault();
-        tg.openTelegramLink(a.href);
+      e.preventDefault();
+      var href = a.getAttribute("href");
+      try {
+        if (tg && tg.openTelegramLink) tg.openTelegramLink(href);
+        else window.open(href, "_blank");
+      } catch (err) {
+        window.location.href = href;
       }
     });
   });

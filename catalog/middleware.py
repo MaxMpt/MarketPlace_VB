@@ -2,6 +2,7 @@ import json
 from urllib.parse import unquote
 
 from .models import Resident, UserSettings
+from .notify import is_admin
 
 FALLBACK = {
     "id": 1,
@@ -38,4 +39,5 @@ class ResidentMiddleware:
         settings, _ = UserSettings.objects.get_or_create(user=resident)
         request.resident = resident
         request.theme = settings.theme
+        request.is_admin = is_admin(resident)
         return self.get_response(request)

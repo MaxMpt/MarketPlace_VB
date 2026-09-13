@@ -18,6 +18,15 @@
       <a class="map-cta" href="{{ company.route_url }}" target="_blank" rel="noopener">{{ company.maps_cta }}</a>
     </div>
   {% endif %}
+  {% if is_admin %}
+    <form method="post" action="{% url 'delete_listing' %}" onsubmit="return confirm('Удалить компанию и уведомить автора?');">
+      {% csrf_token %}
+      <input type="hidden" name="kind" value="company">
+      <input type="hidden" name="pk" value="{{ company.pk }}">
+      <input type="hidden" name="next" value="/companies/">
+      <button type="submit" class="btn-admin-del">Удалить как админ</button>
+    </form>
+  {% endif %}
 </div>
 <section class="section">
   <h3>Отзывы</h3>
@@ -29,6 +38,13 @@
           {% stars r.rating 12 %}
         </div>
         {% if r.review_text %}<p>{{ r.review_text }}</p>{% endif %}
+        {% if is_admin %}
+          <form method="post" action="{% url 'delete_review' %}">
+            {% csrf_token %}
+            <input type="hidden" name="pk" value="{{ r.pk }}">
+            <button type="submit" class="btn-admin-del">Удалить отзыв</button>
+          </form>
+        {% endif %}
       </article>
     {% endfor %}
   </div>

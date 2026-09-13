@@ -14,11 +14,6 @@
   <div><strong>{{ reviews|length }}</strong><span>Мои отзывы</span></div>
 </div>
 <div class="pad"><a class="btn" href="{% url 'add' %}">+ Новая карточка</a></div>
-<div class="pad" style="padding-top:0">
-  <a class="btn-contact" href="{{ support_url }}" data-tg-link>
-    Написать в поддержку
-  </a>
-</div>
 
 <section class="section">
   <h3>Настройки</h3>
@@ -29,6 +24,14 @@
       <small class="muted">сохраняется только для вас</small>
     </div>
     <button type="submit" class="switch {% if theme == 'dark' %}on{% endif %}" role="switch" aria-checked="{% if theme == 'dark' %}true{% else %}false{% endif %}"></button>
+  </form>
+  <form class="settings" method="post" action="{% url 'toggle_notify' %}" style="margin-top:.75rem">
+    {% csrf_token %}
+    <div>
+      <p>Уведомления в боте</p>
+      <small class="muted">о комментариях к вашим услугам</small>
+    </div>
+    <button type="submit" class="switch {% if notify_reviews %}on{% endif %}" role="switch" aria-checked="{% if notify_reviews %}true{% else %}false{% endif %}"></button>
   </form>
 </section>
 
@@ -88,4 +91,7 @@
     {% endfor %}
   </div>
 </section>
+<div class="pad">
+  <a class="btn-support" href="{{ support_url }}" data-tg-link>Написать в поддержку</a>
+</div>
 {% endblock %}

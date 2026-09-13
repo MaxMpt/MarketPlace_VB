@@ -34,6 +34,8 @@ def parse_price_input(raw: str):
     text = (raw or "").strip()
     if not text:
         return None, ""
+    if text.lower() in {"договорная", "договор", "по договоренности", "по договорённости"}:
+        return None, "Договорная"
     stripped = re.sub(r"(?i)руб(?:лей|ля|\.)?|₽|от", "", text)
     stripped = re.sub(r"[\s\u00a0]", "", stripped)
     if stripped.isdigit():

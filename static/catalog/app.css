@@ -278,3 +278,24 @@ button, input, textarea { font: inherit; font-size: 16px; }
 .rate label:has(~ label input:checked) { opacity: 1; }
 .rate label:has(input:checked) { opacity: 1; }
 .rate label:has(input:checked) ~ label { opacity: .35; }
+.btn-support {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.4rem;
+  width: 100%;
+  border-radius: .75rem;
+  background: var(--bg);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+.btn-admin-del {
+  margin-top: .6rem;
+  border: 0;
+  background: transparent;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0;
+}

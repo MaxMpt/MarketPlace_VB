@@ -34,6 +34,7 @@ class Resident(models.Model):
 class UserSettings(models.Model):
     user = models.OneToOneField(Resident, on_delete=models.CASCADE, related_name="settings")
     theme = models.CharField(max_length=8, default="light", choices=[("light", "светлая"), ("dark", "тёмная")])
+    notify_reviews = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
 
 
@@ -190,6 +191,18 @@ class RatingReview(models.Model):
 
     class Meta:
         ordering = ["-create_date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["create_user", "service"],
+                condition=Q(deleted_at__isnull=True, service__isnull=False),
+                name="uq_review_user_service_alive",
+            ),
+            models.UniqueConstraint(
+                fields=["create_user", "company"],
+                condition=Q(deleted_at__isnull=True, company__isnull=False),
+                name="uq_review_user_company_alive",
+            ),
+        ]
 
     @property
     def target_name(self):
