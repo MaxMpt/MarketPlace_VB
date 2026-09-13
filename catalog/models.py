@@ -206,19 +206,31 @@ class RatingReview(models.Model):
 
     @property
     def target_name(self):
-        if self.service_id:
-            return self.service.name
-        if self.company_id:
-            return self.company.name
-        return ""
+        if self.service_id and self.service:
+            name = self.service.name
+            return f"{name} (удалено)" if self.service.deleted_at else name
+        if self.company_id and self.company:
+            name = self.company.name
+            return f"{name} (удалено)" if self.company.deleted_at else name
+        return "Карточка удалена"
+
+    @property
+    def target_alive(self):
+        if self.service_id and self.service:
+            return self.service.deleted_at is None
+        if self.company_id and self.company:
+            return self.company.deleted_at is None
+        return False
 
     @property
     def target_url(self):
+        if not self.target_alive:
+            return ""
         if self.service_id:
             return f"/services/{self.service_id}/"
         if self.company_id:
             return f"/companies/{self.company_id}/"
-        return "/"
+        return ""
 
 
 class Photo(models.Model):

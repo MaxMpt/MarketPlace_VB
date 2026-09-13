@@ -70,6 +70,7 @@ button, input, textarea { font: inherit; font-size: 16px; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.review-gone { opacity: .65; pointer-events: none; }
 .icon-btn { width: 2.75rem; height: 2.75rem; display: grid; place-items: center; color: var(--primary); }
 .app-main { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; }
 .app-nav {

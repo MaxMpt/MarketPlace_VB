@@ -78,14 +78,18 @@
 <section class="section">
   <h3>Мои отзывы</h3>
   <div class="stack">
-    {% for r in reviews %}
+        {% for r in reviews %}
+      {% if r.target_url %}
       <a class="review" href="{{ r.target_url }}">
+      {% else %}
+      <div class="review review-gone">
+      {% endif %}
         <div class="review-head">
           <p>{{ r.target_name }}</p>
           {% stars r.rating 12 %}
         </div>
         {% if r.review_text %}<p>{{ r.review_text }}</p>{% endif %}
-      </a>
+      {% if r.target_url %}</a>{% else %}</div>{% endif %}
     {% empty %}
       <p class="empty">Оцените услугу или компанию — отзыв появится здесь.</p>
     {% endfor %}
