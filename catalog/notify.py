@@ -1,3 +1,4 @@
+import threading
 import urllib.parse
 import urllib.request
 
@@ -15,10 +16,14 @@ def send_telegram(chat_id, text: str) -> None:
         f"https://api.telegram.org/bot{token}/sendMessage",
         data=data,
     )
-    try:
-        urllib.request.urlopen(req, timeout=6)
-    except Exception:
-        pass
+
+    def _run():
+        try:
+            urllib.request.urlopen(req, timeout=6)
+        except Exception:
+            pass
+
+    threading.Thread(target=_run, daemon=True).start()
 
 
 def is_admin(user) -> bool:

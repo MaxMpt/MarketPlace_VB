@@ -3,7 +3,13 @@
 {% block content %}
 {% include "catalog/_carousel.html" %}
 <div class="pad">
-  <h2 class="detail-title">{{ company.name }}</h2>
+  <div class="title-row">
+    <h2 class="detail-title">{{ company.name }}</h2>
+    {% if company.create_user_id == resident.id %}
+      {% url 'edit_company' company.pk as edit_url %}
+      {% include "catalog/_edit_icon.html" %}
+    {% endif %}
+  </div>
   <div class="card-meta">
     {% stars company.rating_value %}
     <span>

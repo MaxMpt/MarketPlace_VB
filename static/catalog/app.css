@@ -145,7 +145,35 @@ button, input, textarea { font: inherit; font-size: 16px; }
 .card-img img { width: 100%; height: 100%; object-fit: cover; }
 .card-body { min-width: 0; flex: 1; }
 .card-own { position: relative; }
-.card-own .card { padding-right: 4.5rem; }
+.card-own .card { padding-right: 3.2rem; }
+.card-actions {
+  position: absolute;
+  top: .4rem;
+  right: .4rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .25rem;
+}
+.card-edit {
+  position: absolute;
+  top: .45rem;
+  right: .45rem;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--primary) 16%, transparent);
+  color: var(--primary);
+}
+.card-actions .card-edit { position: static; }
+.card-actions .card-del { position: static; }
+.title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
+.title-row .detail-title { margin: .35rem 0; flex: 1; }
+.title-row .card-edit { position: static; flex-shrink: 0; }
 .card-title { margin: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card-sub { margin: .2rem 0 0; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-meta { display: flex; align-items: center; gap: .4rem; margin-top: .4rem; font-size: 12px; color: var(--muted); }

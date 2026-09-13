@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block content %}
+<form class="pad add-form" method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <label class="label" for="name">Название</label>
+  <input id="name" name="name" required minlength="2" maxlength="80" value="{{ item.name }}">
+
+  {% if kind == "service" %}
+  <div>
+    <p class="label">Категория</p>
+    <div class="chips wrap">
+      {% for c in categories %}
+        <label class="chip-opt">
+          <input type="radio" name="category_id" value="{{ c.pk }}" {% if item.category_id == c.pk %}checked{% endif %}>
+          {{ c.title }}
+        </label>
+      {% endfor %}
+    </div>
+    <label class="label" for="price">Цена</label>
+    <input id="price" name="price_note" maxlength="40" placeholder="600 или Договорная" value="{{ price_value }}">
+  </div>
+  {% endif %}
+
+  <label class="label" for="desc">Описание</label>
+  <textarea id="desc" name="description" rows="4" maxlength="600">{{ item.description }}</textarea>
+
+  {% if kind == "company" %}
+  <div>
+    <label class="label" for="address">Адрес</label>
+    <div class="addr-wrap">
+      <input id="address" name="address" maxlength="255" value="{{ item.address }}" placeholder="Начните вводить адрес" autocomplete="off">
+      <ul id="addr-suggest" class="suggest" hidden></ul>
+    </div>
+    <p class="label">Открывать маршрут</p>
+    <div class="seg">
+      <label class="{% if item.map_provider != 'google' %}on{% endif %}"><input type="radio" name="map_provider" value="yandex" {% if item.map_provider != 'google' %}checked{% endif %}> Яндекс</label>
+      <label class="{% if item.map_provider == 'google' %}on{% endif %}"><input type="radio" name="map_provider" value="google" {% if item.map_provider == 'google' %}checked{% endif %}> Google</label>
+    </div>
+    <iframe id="pick-frame" class="map-picker" title="Карта" src="{{ item.embed_url|default:'https://yandex.ru/map-widget/v1/?ll=37.5433,55.5477&z=15' }}" loading="lazy"></iframe>
+    <input type="hidden" name="lat" id="lat" value="{{ item.lat|default_if_none:'' }}">
+    <input type="hidden" name="lng" id="lng" value="{{ item.lng|default_if_none:'' }}">
+  </div>
+  {% endif %}
+
+  <p class="label">Добавить фото</p>
+  <p class="muted tiny">Необязательно. Старые снимки останутся, новые добавятся.</p>
+  <input type="file" name="photos" accept="image/*" multiple>
+
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <button class="btn" type="submit">Сохранить</button>
+</form>
+{% endblock %}
+{% block extra_js %}
+{% if kind == "company" %}
+<script>
+  const address = document.getElementById('address');
+  const suggest = document.getElementById('addr-suggest');
+  const frame = document.getElementById('pick-frame');
+  const latInput = document.getElementById('lat');
+  const lngInput = document.getElementById('lng');
+  let timer;
+  function provider() {
+    return document.querySelector('input[name=map_provider]:checked')?.value || 'yandex';
+  }
+  function updateMap() {
+    const lat = latInput.value;
+    const lng = lngInput.value;
+    const q = encodeURIComponent(address.value || '');
+    if (provider() === 'google') {
+      if (lat && lng) frame.src = `https://maps.google.com/maps?q=${lat},${lng}&hl=ru&z=16&output=embed`;
+      else if (address.value) frame.src = `https://maps.google.com/maps?q=${q}&hl=ru&z=16&output=embed`;
+    } else {
+      if (lat && lng) frame.src = `https://yandex.ru/map-widget/v1/?ll=${lng},${lat}&pt=${lng},${lat}&z=16&l=map`;
+      else if (address.value) frame.src = `https://yandex.ru/map-widget/v1/?text=${q}&z=16`;
+    }
+  }
+  function hideSuggest() { suggest.hidden = true; suggest.innerHTML = ''; }
+  const suggestUrl = "{% url 'geo_suggest' %}";
+  address.addEventListener('input', function () {
+    clearTimeout(timer);
+    const q = address.value.trim();
+    if (q.length < 2) { hideSuggest(); return; }
+    timer = setTimeout(async function () {
+      const res = await fetch(suggestUrl + '?q=' + encodeURIComponent(q), { credentials: 'same-origin' });
+      const data = await res.json();
+      suggest.innerHTML = '';
+      (data.items || []).forEach(function (item) {
+        const li = document.createElement('li');
+        li.textContent = item.label;
+        li.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          address.value = item.label;
+          latInput.value = item.lat;
+          lngInput.value = item.lng;
+          hideSuggest();
+          updateMap();
+        });
+        suggest.appendChild(li);
+      });
+      suggest.hidden = !suggest.children.length;
+    }, 280);
+  });
+  document.querySelectorAll('input[name=map_provider]').forEach((el) => el.addEventListener('change', function () {
+    document.querySelectorAll('input[name=map_provider]').forEach((r) => r.parentElement.classList.toggle('on', r.checked));
+    updateMap();
+  }));
+</script>
+{% endif %}
+{% endblock %}

@@ -24,9 +24,9 @@ def star_range(value, count=5):
 def save_resized_image(django_file, name: str) -> ContentFile:
     image = Image.open(django_file)
     image = image.convert("RGB")
-    image.thumbnail((960, 960))
+    image.thumbnail((720, 720))
     buf = BytesIO()
-    image.save(buf, format="JPEG", quality=72)
+    image.save(buf, format="JPEG", quality=58, optimize=True)
     return ContentFile(buf.getvalue(), name=name.rsplit(".", 1)[0][:40] + ".jpg")
 
 

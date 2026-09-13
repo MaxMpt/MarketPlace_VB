@@ -293,6 +293,100 @@ def add_listing(request):
     )
 
 
+def _can_edit(user, item):
+    return bool(item.create_user_id and (item.create_user_id == user.id or is_admin(user)))
+
+
+def _price_field(service):
+    if service.price_note:
+        return service.price_note
+    if service.price_cents is not None:
+        return str(round(service.price_cents / 100))
+    return ""
+
+
+def edit_service(request, pk):
+    service = get_object_or_404(Service.objects.alive().select_related("category"), pk=pk)
+    if not _can_edit(request.resident, service):
+        return redirect("service_detail", pk=pk)
+    error = ""
+    if request.method == "POST":
+        name = (request.POST.get("name") or "").strip()
+        description = (request.POST.get("description") or "").strip()
+        if len(name) < 2:
+            error = "Название слишком короткое"
+        else:
+            try:
+                category = ServiceCategory.objects.alive().get(pk=int(request.POST.get("category_id") or 0))
+            except (ServiceCategory.DoesNotExist, ValueError, TypeError):
+                error = "Выберите категорию"
+            else:
+                cents, note = parse_price_input(request.POST.get("price_note") or "")
+                service.category = category
+                service.name = name
+                service.description = description
+                service.price_cents = cents
+                service.price_note = note
+                service.save()
+                files = request.FILES.getlist("photos")[:6]
+                if files:
+                    _save_photos(files, service=service)
+                return redirect("service_detail", pk=service.pk)
+    return render(
+        request,
+        "catalog/edit.html",
+        {
+            "kind": "service",
+            "item": service,
+            "categories": ServiceCategory.objects.alive(),
+            "price_value": _price_field(service),
+            "error": error,
+            "title": "Изменить услугу",
+            "back": f"/services/{service.pk}/",
+        },
+    )
+
+
+def edit_company(request, pk):
+    company = get_object_or_404(Company.objects.alive(), pk=pk)
+    if not _can_edit(request.resident, company):
+        return redirect("company_detail", pk=pk)
+    error = ""
+    if request.method == "POST":
+        name = (request.POST.get("name") or "").strip()
+        description = (request.POST.get("description") or "").strip()
+        if len(name) < 2:
+            error = "Название слишком короткое"
+        else:
+            lat, lng = _parse_point(request)
+            provider = request.POST.get("map_provider") or company.map_provider or "yandex"
+            if provider not in {"yandex", "google"}:
+                provider = "yandex"
+            company.name = name
+            company.description = description
+            company.address = (request.POST.get("address") or "").strip()[:255]
+            if lat and lng:
+                company.lat = lat
+                company.lng = lng
+            company.map_provider = provider
+            company.save()
+            files = request.FILES.getlist("photos")[:6]
+            if files:
+                _save_photos(files, company=company)
+            return redirect("company_detail", pk=company.pk)
+    return render(
+        request,
+        "catalog/edit.html",
+        {
+            "kind": "company",
+            "item": company,
+            "error": error,
+            "title": "Изменить компанию",
+            "back": f"/companies/{company.pk}/",
+        },
+    )
+
+
 @require_POST
 def add_review(request):
     rating = int(request.POST.get("rating") or 5)

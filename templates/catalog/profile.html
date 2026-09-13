@@ -40,14 +40,18 @@
   <div class="stack">
     {% for s in listings %}
       {% url 'service_detail' s.pk as card_url %}
+      {% url 'edit_service' s.pk as edit_url %}
       <div class="card-own">
         {% include "catalog/_card.html" with href=card_url name=s.name subtitle=s.category.title rating=s.rating_value count=s.rating_count cover=s.cover price=s.price_label %}
-        <form class="card-del" method="post" action="{% url 'delete_listing' %}" onsubmit="return confirm('Скрыть объявление? Соседи его больше не увидят.');">
-          {% csrf_token %}
-          <input type="hidden" name="kind" value="service">
-          <input type="hidden" name="pk" value="{{ s.pk }}">
-          <button type="submit" style="appearance:none;-webkit-appearance:none;border:0;border-radius:999px;height:28px;padding:0 10px;background:rgba(229,57,53,.16);color:#e53935;font:600 11px/1 system-ui,sans-serif">Удалить</button>
-        </form>
+        <div class="card-actions">
+          {% include "catalog/_edit_icon.html" %}
+          <form class="card-del" method="post" action="{% url 'delete_listing' %}" onsubmit="return confirm('Скрыть объявление? Соседи его больше не увидят.');">
+            {% csrf_token %}
+            <input type="hidden" name="kind" value="service">
+            <input type="hidden" name="pk" value="{{ s.pk }}">
+            <button type="submit" style="appearance:none;-webkit-appearance:none;border:0;border-radius:999px;height:28px;padding:0 10px;background:rgba(229,57,53,.16);color:#e53935;font:600 11px/1 system-ui,sans-serif">Удалить</button>
+          </form>
+        </div>
       </div>
     {% empty %}
       <p class="empty">Пока нет объявлений. Нажмите «Новая карточка», если оказываете услугу соседям.</p>
@@ -61,14 +65,18 @@
   <div class="stack">
     {% for c in my_companies %}
       {% url 'company_detail' c.pk as card_url %}
+      {% url 'edit_company' c.pk as edit_url %}
       <div class="card-own">
         {% include "catalog/_card.html" with href=card_url name=c.name subtitle=c.description rating=c.rating_value count=c.rating_count cover=c.cover %}
-        <form class="card-del" method="post" action="{% url 'delete_listing' %}" onsubmit="return confirm('Скрыть компанию? Соседи её больше не увидят.');">
-          {% csrf_token %}
-          <input type="hidden" name="kind" value="company">
-          <input type="hidden" name="pk" value="{{ c.pk }}">
-          <button type="submit" style="appearance:none;-webkit-appearance:none;border:0;border-radius:999px;height:28px;padding:0 10px;background:rgba(229,57,53,.16);color:#e53935;font:600 11px/1 system-ui,sans-serif">Удалить</button>
-        </form>
+        <div class="card-actions">
+          {% include "catalog/_edit_icon.html" %}
+          <form class="card-del" method="post" action="{% url 'delete_listing' %}" onsubmit="return confirm('Скрыть компанию? Соседи её больше не увидят.');">
+            {% csrf_token %}
+            <input type="hidden" name="kind" value="company">
+            <input type="hidden" name="pk" value="{{ c.pk }}">
+            <button type="submit" style="appearance:none;-webkit-appearance:none;border:0;border-radius:999px;height:28px;padding:0 10px;background:rgba(229,57,53,.16);color:#e53935;font:600 11px/1 system-ui,sans-serif">Удалить</button>
+          </form>
+        </div>
       </div>
     {% endfor %}
   </div>
@@ -78,7 +86,7 @@
 <section class="section">
   <h3>Мои отзывы</h3>
   <div class="stack">
-        {% for r in reviews %}
+    {% for r in reviews %}
       {% if r.target_url %}
       <a class="review" href="{{ r.target_url }}">
       {% else %}
