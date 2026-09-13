@@ -30,7 +30,7 @@
 <section class="section">
   <h3>Мои услуги</h3>
   <div class="stack">
-        {% for s in listings %}
+    {% for s in listings %}
       {% url 'service_detail' s.pk as card_url %}
       <div class="card-row">
         {% include "catalog/_card.html" with href=card_url name=s.name subtitle=s.category.title rating=s.rating_value count=s.rating_count cover=s.cover price=s.price_label %}
@@ -42,6 +42,8 @@
         </form>
       </div>
     {% empty %}
+      <p class="empty">Пока нет объявлений. Нажмите «Новая карточка», если оказываете услугу соседям.</p>
+    {% endfor %}
   </div>
 </section>
 
@@ -49,7 +51,7 @@
 <section class="section">
   <h3>Мои компании</h3>
   <div class="stack">
-        {% for c in my_companies %}
+    {% for c in my_companies %}
       {% url 'company_detail' c.pk as card_url %}
       <div class="card-row">
         {% include "catalog/_card.html" with href=card_url name=c.name subtitle=c.description rating=c.rating_value count=c.rating_count cover=c.cover %}
