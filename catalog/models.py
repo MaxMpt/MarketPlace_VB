@@ -1,326 +1,240 @@
-from django.db.models import Prefetch
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from django.utils import timezone
-from django.views.decorators.http import require_GET, require_POST
-from urllib.parse import quote
-
-from .models import Company, Photo, RatingReview, Service, ServiceCategory, UserSettings
-from .utils import parse_price_input, save_resized_image, telegram_contact_url
+from django.db import models
+from django.db.models import Avg, Count, Q
+from django.templatetags.static import static
 
 
-def _photos():
-    return Prefetch("photos", queryset=Photo.objects.alive().order_by("sort_order", "id"))
+class AliveQuerySet(models.QuerySet):
+    def alive(self):
+        return self.filter(deleted_at__isnull=True)
 
 
-def home(request):
-    services = (
-        Service.objects.alive()
-        .select_related("category", "create_user")
-        .prefetch_related(_photos())
-        .order_by("-rating_value", "id")[:3]
+class Resident(models.Model):
+    id = models.BigIntegerField(primary_key=True)
+    username = models.CharField(max_length=32, blank=True, default="")
+    first_name = models.CharField(max_length=255)
+    last_name = models.CharField(max_length=255, blank=True, default="")
+    photo_url = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    objects = AliveQuerySet.as_manager()
+
+    @property
+    def display_name(self):
+        return " ".join(part for part in (self.first_name, self.last_name) if part).strip() or "Житель"
+
+    @property
+    def avatar(self):
+        return self.photo_url or static("catalog/photos/avatar.gif")
+
+    def __str__(self):
+        return self.display_name
+
+
+class UserSettings(models.Model):
+    user = models.OneToOneField(Resident, on_delete=models.CASCADE, related_name="settings")
+    theme = models.CharField(max_length=8, default="light", choices=[("light", "светлая"), ("dark", "тёмная")])
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class ServiceCategory(models.Model):
+    slug = models.SlugField(max_length=32)
+    title = models.CharField(max_length=64)
+    sort_order = models.SmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    objects = AliveQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+
+    def __str__(self):
+        return self.title
+
+
+class Company(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default="")
+    rating_value = models.DecimalField(max_digits=3, decimal_places=2, default=0)
+    rating_count = models.IntegerField(default=0)
+    create_user = models.ForeignKey(
+        Resident, null=True, blank=True, on_delete=models.SET_NULL, related_name="companies"
     )
-    companies = (
-        Company.objects.alive()
-        .prefetch_related(_photos())
-        .order_by("-rating_value", "id")[:2]
+    address = models.CharField(max_length=255, blank=True, default="")
+    lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    map_provider = models.CharField(
+        max_length=8, default="yandex", choices=[("yandex", "Яндекс"), ("google", "Google")]
     )
-    return render(
-        request,
-        "catalog/home.html",
-        {
-            "categories": ServiceCategory.objects.alive(),
-            "services": services,
-            "companies": companies,
-            "service_count": Service.objects.alive().count(),
-            "company_count": Company.objects.alive().count(),
-            "title": "ВБ2 Каталог",
-        },
-    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
 
+    objects = AliveQuerySet.as_manager()
 
-def services_list(request):
-    slug = request.GET.get("cat") or ""
-    qs = Service.objects.alive().select_related("category", "create_user").prefetch_related(_photos())
-    if slug:
-        qs = qs.filter(category__slug=slug)
-    return render(
-        request,
-        "catalog/services.html",
-        {
-            "categories": ServiceCategory.objects.alive(),
-            "services": qs,
-            "active_cat": slug,
-            "title": "Услуги жителей",
-        },
-    )
+    class Meta:
+        ordering = ["-rating_value", "id"]
 
+    def cover(self):
+        photo = self.photos.alive().order_by("sort_order", "id").first()
+        return photo.src if photo else ""
 
-def _contact(request, author, title, kind):
-    if not author or not author.username or author.id == request.resident.id:
+    def recalc_rating(self):
+        agg = self.reviews.alive().aggregate(avg=Avg("rating"), cnt=Count("id"))
+        self.rating_count = agg["cnt"] or 0
+        self.rating_value = round(agg["avg"] or 0, 2)
+        self.save(update_fields=["rating_count", "rating_value"])
+
+    @property
+    def has_point(self):
+        return self.lat is not None and self.lng is not None
+
+    @property
+    def route_url(self):
+        from urllib.parse import quote
+
+        if self.has_point:
+            lat, lng = float(self.lat), float(self.lng)
+            if self.map_provider == "google":
+                return f"https://www.google.com/maps/dir/?api=1&destination={lat},{lng}"
+            return f"https://yandex.ru/maps/?rtext=~{lat},{lng}&rtt=auto"
+        if self.address:
+            q = quote(self.address)
+            if self.map_provider == "google":
+                return f"https://www.google.com/maps/search/?api=1&query={q}"
+            return f"https://yandex.ru/maps/?text={q}"
         return ""
-    if kind == "service":
-        text = (
-            f"Здравствуйте! Обращаюсь по услуге «{title}» "
-            f"из каталога двора Восточное Бутово 2. Можно уточнить детали?"
-        )
-    else:
-        text = (
-            f"Здравствуйте! Обращаюсь по компании «{title}» "
-            f"из каталога двора Восточное Бутово 2. Подскажите, пожалуйста."
-        )
-    return telegram_contact_url(author.username, text)
+
+    @property
+    def maps_cta(self):
+        return "Маршрут в Google Maps" if self.map_provider == "google" else "Маршрут в Яндекс.Картах"
+
+    @property
+    def embed_url(self):
+        from urllib.parse import quote
+
+        if self.has_point:
+            lat, lng = float(self.lat), float(self.lng)
+            if self.map_provider == "google":
+                return f"https://maps.google.com/maps?q={lat},{lng}&hl=ru&z=16&output=embed"
+            return f"https://yandex.ru/map-widget/v1/?ll={lng},{lat}&pt={lng},{lat}&z=16&l=map"
+        if self.address:
+            q = quote(self.address)
+            if self.map_provider == "google":
+                return f"https://maps.google.com/maps?q={q}&hl=ru&z=16&output=embed"
+            return f"https://yandex.ru/map-widget/v1/?text={q}&z=16"
+        return ""
+
+    def __str__(self):
+        return self.name
 
 
-def _parse_point(request):
-    try:
-        lat = request.POST.get("lat") or None
-        lng = request.POST.get("lng") or None
-        if lat and lng:
-            return float(lat), float(lng)
-    except (TypeError, ValueError):
-        pass
-    return None, None
-
-
-def service_detail(request, pk):
-    service = get_object_or_404(
-        Service.objects.alive().select_related("category", "create_user").prefetch_related(_photos()),
-        pk=pk,
+class Service(models.Model):
+    category = models.ForeignKey(ServiceCategory, on_delete=models.PROTECT, related_name="services")
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default="")
+    price_cents = models.IntegerField(null=True, blank=True)
+    price_note = models.CharField(max_length=64, blank=True, default="")
+    rating_value = models.DecimalField(max_digits=3, decimal_places=2, default=0)
+    rating_count = models.IntegerField(default=0)
+    create_user = models.ForeignKey(
+        Resident, null=True, blank=True, on_delete=models.SET_NULL, related_name="services"
     )
-    reviews = service.reviews.alive().select_related("create_user").prefetch_related(_photos())
-    my_review = reviews.filter(create_user=request.resident).first()
-    return render(
-        request,
-        "catalog/service_detail.html",
-        {
-            "service": service,
-            "photos": service.photos.alive(),
-            "reviews": reviews,
-            "my_review": my_review,
-            "contact_url": _contact(request, service.create_user, service.name, "service"),
-            "title": service.name,
-            "back": "/services/",
-        },
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    objects = AliveQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-rating_value", "id"]
+
+    def cover(self):
+        photo = self.photos.alive().order_by("sort_order", "id").first()
+        return photo.src if photo else ""
+
+    def price_label(self):
+        if self.price_note:
+            return self.price_note
+        if self.price_cents is None:
+            return "договорная"
+        rub = round(self.price_cents / 100)
+        return f"от {rub:,}".replace(",", " ") + " ₽"
+
+    def recalc_rating(self):
+        agg = self.reviews.alive().aggregate(avg=Avg("rating"), cnt=Count("id"))
+        self.rating_count = agg["cnt"] or 0
+        self.rating_value = round(agg["avg"] or 0, 2)
+        self.save(update_fields=["rating_count", "rating_value"])
+
+    def __str__(self):
+        return self.name
+
+
+class RatingReview(models.Model):
+    company = models.ForeignKey(
+        Company, null=True, blank=True, on_delete=models.CASCADE, related_name="reviews"
     )
-
-
-def companies_list(request):
-    companies = Company.objects.alive().prefetch_related(_photos())
-    return render(
-        request,
-        "catalog/companies.html",
-        {"companies": companies, "title": "Компании района"},
+    service = models.ForeignKey(
+        Service, null=True, blank=True, on_delete=models.CASCADE, related_name="reviews"
     )
+    create_user = models.ForeignKey(Resident, on_delete=models.PROTECT, related_name="reviews")
+    author_name = models.CharField(max_length=64, default="Житель")
+    rating = models.SmallIntegerField()
+    review_text = models.TextField(blank=True, default="")
+    create_date = models.DateTimeField(auto_now_add=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    objects = AliveQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-create_date"]
+
+    @property
+    def target_name(self):
+        if self.service_id:
+            return self.service.name
+        if self.company_id:
+            return self.company.name
+        return ""
+
+    @property
+    def target_url(self):
+        if self.service_id:
+            return f"/services/{self.service_id}/"
+        if self.company_id:
+            return f"/companies/{self.company_id}/"
+        return "/"
 
 
-def company_detail(request, pk):
-    company = get_object_or_404(
-        Company.objects.alive().select_related("create_user").prefetch_related(_photos()),
-        pk=pk,
+class Photo(models.Model):
+    review = models.ForeignKey(
+        RatingReview, null=True, blank=True, on_delete=models.CASCADE, related_name="photos"
     )
-    reviews = company.reviews.alive().select_related("create_user")
-    my_review = reviews.filter(create_user=request.resident).first()
-    return render(
-        request,
-        "catalog/company_detail.html",
-        {
-            "company": company,
-            "photos": company.photos.alive(),
-            "reviews": reviews,
-            "my_review": my_review,
-            "title": company.name,
-            "back": "/companies/",
-        },
+    service = models.ForeignKey(
+        Service, null=True, blank=True, on_delete=models.CASCADE, related_name="photos"
     )
-
-
-def profile(request):
-    user = request.resident
-    listings = (
-        Service.objects.alive()
-        .filter(create_user=user)
-        .select_related("category")
-        .prefetch_related(_photos())
+    company = models.ForeignKey(
+        Company, null=True, blank=True, on_delete=models.CASCADE, related_name="photos"
     )
-    companies = Company.objects.alive().filter(create_user=user).prefetch_related(_photos())
-    reviews = RatingReview.objects.alive().filter(create_user=user).select_related("service", "company")
-    return render(
-        request,
-        "catalog/profile.html",
-        {
-            "listings": listings,
-            "my_companies": companies,
-            "reviews": reviews,
-            "listing_count": listings.count() + companies.count(),
-            "title": "Профиль",
-            "support_url": (
-                "https://t.me/ima_ecosystem?direct&text="
-                + quote("Здравствуйте! Нашёл баг в каталоге двора Восточное Бутово 2.")
-            ),
-        },
-    )
+    image = models.ImageField(upload_to="listings/%Y/%m/", blank=True, null=True)
+    external_url = models.TextField(blank=True, default="")
+    sort_order = models.SmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
 
+    objects = AliveQuerySet.as_manager()
 
-@require_POST
-def toggle_theme(request):
-    settings, _ = UserSettings.objects.get_or_create(user=request.resident)
-    settings.theme = "light" if settings.theme == "dark" else "dark"
-    settings.save(update_fields=["theme", "updated_at"])
-    return redirect("profile")
+    class Meta:
+        ordering = ["sort_order", "id"]
 
-
-@require_POST
-def delete_listing(request):
-    kind = request.POST.get("kind")
-    pk = request.POST.get("pk")
-    user = request.resident
-    if kind == "service":
-        item = get_object_or_404(Service.objects.alive(), pk=pk, create_user=user)
-    elif kind == "company":
-        item = get_object_or_404(Company.objects.alive(), pk=pk, create_user=user)
-    else:
-        return redirect("profile")
-    item.deleted_at = timezone.now()
-    item.save(update_fields=["deleted_at"])
-    return redirect("profile")
-
-
-def add_listing(request):
-    categories = list(ServiceCategory.objects.alive())
-    error = ""
-    kind = request.POST.get("kind", "service")
-    if request.method == "POST":
-        name = (request.POST.get("name") or "").strip()
-        description = (request.POST.get("description") or "").strip()
-        price_note = (request.POST.get("price_note") or "").strip()
-        kind = request.POST.get("kind") or "service"
-        files = request.FILES.getlist("photos")[:6]
-        if len(name) < 2:
-            error = "Название слишком короткое"
-        elif kind == "service":
-            try:
-                category = ServiceCategory.objects.alive().get(pk=int(request.POST.get("category_id") or 0))
-            except (ServiceCategory.DoesNotExist, ValueError, TypeError):
-                error = "Выберите категорию"
-            else:
-                cents, note = parse_price_input(price_note)
-                service = Service.objects.create(
-                    category=category,
-                    name=name,
-                    description=description,
-                    price_cents=cents,
-                    price_note=note,
-                    create_user=request.resident,
-                )
-                _save_photos(files, service=service)
-                return redirect("service_detail", pk=service.pk)
-        else:
-            lat, lng = _parse_point(request)
-            provider = request.POST.get("map_provider") or "yandex"
-            if provider not in {"yandex", "google"}:
-                provider = "yandex"
-            company = Company.objects.create(
-                name=name,
-                description=description,
-                create_user=request.resident,
-                address=(request.POST.get("address") or "").strip()[:255],
-                lat=lat,
-                lng=lng,
-                map_provider=provider,
-            )
-            _save_photos(files, company=company)
-            return redirect("company_detail", pk=company.pk)
-    return render(
-        request,
-        "catalog/add.html",
-        {
-            "categories": categories,
-            "title": "Новая карточка",
-            "back": "/",
-            "error": error,
-            "kind": kind,
-        },
-    )
-
-
-@require_POST
-def add_review(request):
-    rating = int(request.POST.get("rating") or 5)
-    rating = min(5, max(1, rating))
-    text = (request.POST.get("text") or "").strip()
-    service_id = request.POST.get("service_id")
-    company_id = request.POST.get("company_id")
-    user = request.resident
-    if service_id:
-        service = get_object_or_404(Service.objects.alive(), pk=service_id)
-        review, _ = RatingReview.objects.update_or_create(
-            service=service,
-            create_user=user,
-            deleted_at=None,
-            defaults={
-                "author_name": user.display_name,
-                "rating": rating,
-                "review_text": text,
-            },
-        )
-        service.recalc_rating()
-        return redirect("service_detail", pk=service.pk)
-    company = get_object_or_404(Company.objects.alive(), pk=company_id)
-    RatingReview.objects.update_or_create(
-        company=company,
-        create_user=user,
-        deleted_at=None,
-        defaults={
-            "author_name": user.display_name,
-            "rating": rating,
-            "review_text": text,
-        },
-    )
-    company.recalc_rating()
-    return redirect("company_detail", pk=company.pk)
-
-
-def _save_photos(files, service=None, company=None):
-    for index, uploaded in enumerate(files):
-        if not getattr(uploaded, "content_type", "").startswith("image/"):
-            continue
-        photo = Photo(service=service, company=company, sort_order=index)
-        content = save_resized_image(uploaded, uploaded.name)
-        photo.image.save(content.name, content, save=True)
-
-
-@require_GET
-def geo_suggest(request):
-    q = (request.GET.get("q") or "").strip()
-    if len(q) < 2:
-        return JsonResponse({"items": []})
-    import json
-    import urllib.request
-
-    url = (
-        "https://photon.komoot.io/api/?q="
-        + quote(q)
-        + "&lat=55.5477&lon=37.5433&limit=6&lang=ru"
-    )
-    req = urllib.request.Request(url, headers={"User-Agent": "VB2Catalog/1.0"})
-    try:
-        with urllib.request.urlopen(req, timeout=4) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-    except Exception:
-        return JsonResponse({"items": []})
-    items = []
-    for feature in data.get("features") or []:
-        props = feature.get("properties") or {}
-        coords = (feature.get("geometry") or {}).get("coordinates") or [None, None]
-        parts = [
-            props.get("name"),
-            " ".join(p for p in (props.get("street"), props.get("housenumber")) if p),
-            props.get("district"),
-            props.get("city") or props.get("town") or props.get("village"),
-        ]
-        label = ", ".join(p for p in parts if p)
-        if not label or coords[0] is None:
-            continue
-        items.append({"label": label, "lat": coords[1], "lng": coords[0]})
-    return JsonResponse({"items": items})
+    @property
+    def src(self):
+        if self.image:
+            return self.image.url
+        if self.external_url.startswith("/"):
+            return self.external_url
+        if self.external_url:
+            return static(self.external_url)
+        return ""
