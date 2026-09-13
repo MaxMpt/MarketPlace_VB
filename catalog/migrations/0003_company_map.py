@@ -3,7 +3,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("catalog", "0002_one_review_per_user"),
+        ("catalog", "0001_initial"),
     ]
 
     operations = [

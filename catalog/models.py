@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Q
 from django.templatetags.static import static
 
 
@@ -61,6 +61,12 @@ class Company(models.Model):
     create_user = models.ForeignKey(
         Resident, null=True, blank=True, on_delete=models.SET_NULL, related_name="companies"
     )
+    address = models.CharField(max_length=255, blank=True, default="")
+    lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    map_provider = models.CharField(
+        max_length=8, default="yandex", choices=[("yandex", "Яндекс"), ("google", "Google")]
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
@@ -79,6 +85,30 @@ class Company(models.Model):
         self.rating_count = agg["cnt"] or 0
         self.rating_value = round(agg["avg"] or 0, 2)
         self.save(update_fields=["rating_count", "rating_value"])
+
+    @property
+    def has_point(self):
+        return self.lat is not None and self.lng is not None
+
+    @property
+    def route_url(self):
+        from urllib.parse import quote
+
+        if self.has_point:
+            lat, lng = float(self.lat), float(self.lng)
+            if self.map_provider == "google":
+                return f"https://www.google.com/maps/dir/?api=1&destination={lat},{lng}"
+            return f"https://yandex.ru/maps/?rtext=~{lat},{lng}&rtt=auto"
+        if self.address:
+            q = quote(self.address)
+            if self.map_provider == "google":
+                return f"https://www.google.com/maps/search/?api=1&query={q}"
+            return f"https://yandex.ru/maps/?text={q}"
+        return ""
+
+    @property
+    def maps_cta(self):
+        return "Маршрут в Google Maps" if self.map_provider == "google" else "Маршрут в Яндекс.Картах"
 
     def __str__(self):
         return self.name
@@ -134,12 +164,6 @@ class RatingReview(models.Model):
         Service, null=True, blank=True, on_delete=models.CASCADE, related_name="reviews"
     )
     create_user = models.ForeignKey(Resident, on_delete=models.PROTECT, related_name="reviews")
-    address = models.CharField(max_length=255, blank=True, default="")
-    lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    map_provider = models.CharField(
-        max_length=8, default="yandex", choices=[("yandex", "Яндекс"), ("google", "Google")]
-    )
     author_name = models.CharField(max_length=64, default="Житель")
     rating = models.SmallIntegerField()
     review_text = models.TextField(blank=True, default="")
