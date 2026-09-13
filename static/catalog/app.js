@@ -79,4 +79,45 @@
       });
     });
   });
+
+  document.querySelectorAll("form[data-confirm]").forEach(function (form) {
+    form.addEventListener("submit", function (e) {
+      if (form.dataset.confirmed) return;
+      e.preventDefault();
+      var msg = form.getAttribute("data-confirm");
+      var go = function (ok) {
+        if (!ok) return;
+        form.dataset.confirmed = "1";
+        form.submit();
+      };
+      if (tg && tg.showConfirm) tg.showConfirm(msg, go);
+      else go(window.confirm(msg));
+    });
+  });
+
+  var cats = document.querySelector(".js-cats");
+  var cards = document.querySelector(".js-cards");
+  function fillCards(html, url) {
+    var doc = new DOMParser().parseFromString(html, "text/html");
+    var next = doc.querySelector(".js-cards");
+    if (next && cards) cards.innerHTML = next.innerHTML;
+    if (url) history.pushState({ cat: true }, "", url);
+  }
+  if (cats && cards) {
+    cats.querySelectorAll("a").forEach(function (a) {
+      a.addEventListener("click", function (e) {
+        e.preventDefault();
+        cats.querySelectorAll("a").forEach(function (x) { x.classList.toggle("chip-on", x === a); });
+        fetch(a.href, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+          .then(function (r) { return r.text(); })
+          .then(function (html) { fillCards(html, a.href); })
+          .catch(function () { location.href = a.href; });
+      });
+    });
+    window.addEventListener("popstate", function () {
+      fetch(location.href, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(function (r) { return r.text(); })
+        .then(function (html) { fillCards(html); });
+    });
+  }
 })();

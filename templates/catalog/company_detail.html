@@ -25,7 +25,7 @@
     </div>
   {% endif %}
   {% if is_admin %}
-    <form method="post" action="{% url 'delete_listing' %}" onsubmit="return confirm('Удалить компанию и уведомить автора?');">
+    <form method="post" action="{% url 'delete_listing' %}" data-confirm="Вы уверены, что хотите удалить компанию?">
       {% csrf_token %}
       <input type="hidden" name="kind" value="company">
       <input type="hidden" name="pk" value="{{ company.pk }}">
@@ -48,7 +48,7 @@
           {% if photo %}<img class="review-photo" src="{{ photo.src }}" alt="">{% endif %}
         {% endwith %}
         {% if is_admin %}
-          <form method="post" action="{% url 'delete_review' %}">
+          <form method="post" action="{% url 'delete_review' %}" data-confirm="Вы уверены, что хотите удалить комментарий?">
             {% csrf_token %}
             <input type="hidden" name="pk" value="{{ r.pk }}">
             <button type="submit" class="btn-admin-del">Удалить отзыв</button>

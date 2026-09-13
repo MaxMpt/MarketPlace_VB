@@ -45,7 +45,7 @@
         {% include "catalog/_card.html" with href=card_url name=s.name subtitle=s.category.title rating=s.rating_value count=s.rating_count cover=s.cover price=s.price_label %}
         <div class="card-actions">
           {% include "catalog/_edit_icon.html" %}
-          <form class="card-del" method="post" action="{% url 'delete_listing' %}" onsubmit="return confirm('Скрыть объявление? Соседи его больше не увидят.');">
+          <form class="card-del" method="post" action="{% url 'delete_listing' %}" data-confirm="Вы уверены, что хотите удалить услугу?">
             {% csrf_token %}
             <input type="hidden" name="kind" value="service">
             <input type="hidden" name="pk" value="{{ s.pk }}">
@@ -70,7 +70,7 @@
         {% include "catalog/_card.html" with href=card_url name=c.name subtitle=c.description rating=c.rating_value count=c.rating_count cover=c.cover %}
         <div class="card-actions">
           {% include "catalog/_edit_icon.html" %}
-          <form class="card-del" method="post" action="{% url 'delete_listing' %}" onsubmit="return confirm('Скрыть компанию? Соседи её больше не увидят.');">
+          <form class="card-del" method="post" action="{% url 'delete_listing' %}" data-confirm="Вы уверены, что хотите удалить компанию?">
             {% csrf_token %}
             <input type="hidden" name="kind" value="company">
             <input type="hidden" name="pk" value="{{ c.pk }}">

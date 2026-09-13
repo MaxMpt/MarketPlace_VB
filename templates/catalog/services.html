@@ -3,14 +3,14 @@
 {% block content %}
 <div class="sticky-bar">
   <p class="muted">Объявления соседей по двору</p>
-  <div class="chips">
+  <div class="chips js-cats">
     <a class="{% if not active_cat %}chip-on{% endif %}" href="{% url 'services' %}">Все</a>
     {% for c in categories %}
       <a class="{% if active_cat == c.slug %}chip-on{% endif %}" href="{% url 'services' %}?cat={{ c.slug }}">{{ c.title }}</a>
     {% endfor %}
   </div>
 </div>
-<div class="stack pad">
+<div class="stack pad js-cards">
   {% for s in services %}
     {% url 'service_detail' s.pk as card_url %}
     {% url 'edit_service' s.pk as edit_url %}
