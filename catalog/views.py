@@ -228,57 +228,67 @@ def delete_review(request):
     return redirect("home")
 
 
+def _need_telegram(request):
+    if getattr(request, "tg_real", False):
+        return ""
+    return "Откройте каталог из Telegram-бота (/start) и создайте карточку ещё раз. Сейчас вы как гость."
+
+
 def add_listing(request):
     categories = list(ServiceCategory.objects.alive())
     error = ""
     kind = request.POST.get("kind", "service")
     if request.method == "POST":
-        name = (request.POST.get("name") or "").strip()
-        description = (request.POST.get("description") or "").strip()
-        price_note = (request.POST.get("price_note") or "").strip()
-        kind = request.POST.get("kind") or "service"
-        files = request.FILES.getlist("photos")[:6]
-        if len(name) < 2:
-            error = "Название слишком короткое"
-        elif kind == "service":
-            try:
-                category = ServiceCategory.objects.alive().get(pk=int(request.POST.get("category_id") or 0))
-            except (ServiceCategory.DoesNotExist, ValueError, TypeError):
-                error = "Выберите категорию"
+        blocked = _need_telegram(request)
+        if blocked:
+            error = blocked
+        else:
+            name = (request.POST.get("name") or "").strip()
+            description = (request.POST.get("description") or "").strip()
+            price_note = (request.POST.get("price_note") or "").strip()
+            kind = request.POST.get("kind") or "service"
+            files = request.FILES.getlist("photos")[:6]
+            if len(name) < 2:
+                error = "Название слишком короткое"
+            elif kind == "service":
+                try:
+                    category = ServiceCategory.objects.alive().get(pk=int(request.POST.get("category_id") or 0))
+                except (ServiceCategory.DoesNotExist, ValueError, TypeError):
+                    error = "Выберите категорию"
+                else:
+                    cents, note = parse_price_input(price_note)
+                    service = Service.objects.create(
+                        category=category,
+                        name=name,
+                        description=description,
+                        price_cents=cents,
+                        price_note=note,
+                        create_user=request.resident,
+                    )
+                    _save_photos(files, service=service)
+                    notify_admins(
+                        f"Новая услуга «{service.name}» от {login_of(request.resident)}"
+                    )
+                    return redirect("service_detail", pk=service.pk)
             else:
-                cents, note = parse_price_input(price_note)
-                service = Service.objects.create(
-                    category=category,
+                lat, lng = _parse_point(request)
+                provider = request.POST.get("map_provider") or "yandex"
+                if provider not in {"yandex", "google"}:
+                    provider = "yandex"
+                company = Company.objects.create(
                     name=name,
                     description=description,
-                    price_cents=cents,
-                    price_note=note,
                     create_user=request.resident,
+                    address=(request.POST.get("address") or "").strip()[:255],
+                    lat=lat,
+                    lng=lng,
+                    map_provider=provider,
                 )
-                _save_photos(files, service=service)
+                _save_photos(files, company=company)
                 notify_admins(
-                    f"Новая услуга «{service.name}» от {login_of(request.resident)}"
+                    f"Новая компания «{company.name}» от {login_of(request.resident)}"
                 )
-                return redirect("service_detail", pk=service.pk)
-        else:
-            lat, lng = _parse_point(request)
-            provider = request.POST.get("map_provider") or "yandex"
-            if provider not in {"yandex", "google"}:
-                provider = "yandex"
-            company = Company.objects.create(
-                name=name,
-                description=description,
-                create_user=request.resident,
-                address=(request.POST.get("address") or "").strip()[:255],
-                lat=lat,
-                lng=lng,
-                map_provider=provider,
-            )
-            _save_photos(files, company=company)
-            notify_admins(
-                f"Новая компания «{company.name}» от {login_of(request.resident)}"
-            )
-            return redirect("company_detail", pk=company.pk)
+                return redirect("company_detail", pk=company.pk)
     return render(
         request,
         "catalog/add.html",
@@ -467,6 +477,8 @@ def add_review(request):
     service_id = request.POST.get("service_id")
     company_id = request.POST.get("company_id")
     user = request.resident
+    if _need_telegram(request):
+        return redirect("home")
     files = request.FILES.getlist("photos")[:3]
     if service_id:
         service = get_object_or_404(Service.objects.alive(), pk=service_id)

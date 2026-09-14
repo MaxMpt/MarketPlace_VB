@@ -1,5 +1,6 @@
 (function () {
   const tg = window.Telegram && window.Telegram.WebApp;
+  if (tg && tg.ready) tg.ready();
   const user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
   const payload = user && user.id
     ? {
@@ -10,10 +11,39 @@
         photo_url: user.photo_url || "",
       }
     : { id: 1, first_name: "Даниил", username: "open_url", photo_url: "/static/catalog/photos/avatar.gif" };
-  document.cookie = "tg_user=" + encodeURIComponent(JSON.stringify(payload)) + ";path=/;max-age=31536000;samesite=lax";
+  const flags = location.protocol === "https:"
+    ? ";path=/;max-age=31536000;secure;samesite=none"
+    : ";path=/;max-age=31536000;samesite=lax";
+  document.cookie = "tg_user=" + encodeURIComponent(JSON.stringify(payload)) + flags;
+  if (tg && tg.initData) {
+    document.cookie = "tg_init=" + encodeURIComponent(tg.initData) + flags;
+  }
+  function injectInit(form) {
+    if (!form || !tg || !tg.initData) return;
+    var existing = form.querySelector("input[name=_tg_init]");
+    if (existing) {
+      existing.value = tg.initData;
+      return;
+    }
+    var input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "_tg_init";
+    input.value = tg.initData;
+    form.appendChild(input);
+  }
+  document.querySelectorAll("form").forEach(injectInit);
+  document.addEventListener("submit", function (e) {
+    if (e.target && e.target.tagName === "FORM") injectInit(e.target);
+  }, true);
   if (user && user.id && String(user.id) !== document.documentElement.dataset.uid) {
-    location.reload();
-    return;
+    var n = Number(sessionStorage.getItem("tg_reload") || 0);
+    if (n < 2) {
+      sessionStorage.setItem("tg_reload", String(n + 1));
+      setTimeout(function () { location.reload(); }, n ? 400 : 50);
+      return;
+    }
+  } else {
+    sessionStorage.removeItem("tg_reload");
   }
   if (tg) {
     tg.ready();
