@@ -130,6 +130,8 @@
       }
     });
   });
+
+  document.querySelectorAll("img").forEach(function (img) {
     img.addEventListener("error", function () {
       if (img.dataset.retry) return;
       img.dataset.retry = "1";
@@ -142,13 +144,15 @@
   });
 
   document.addEventListener("click", function (e) {
+    if (e.target.closest("[data-thumb]")) return;
     var img = e.target.closest("[data-zoom]");
-    if (!img || !img.src) return;
+    if (!img || !img.getAttribute("src")) return;
     e.preventDefault();
-    e.stopPropagation();
     var box = document.createElement("div");
     box.className = "lightbox";
-    box.innerHTML = "<img src=\"" + img.src + "\" alt=\"\">";
+    var full = document.createElement("img");
+    full.src = img.currentSrc || img.src;
+    box.appendChild(full);
     box.addEventListener("click", function () { box.remove(); });
     document.body.appendChild(box);
   });
