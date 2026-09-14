@@ -422,6 +422,26 @@ def reorder_photo(request):
     return redirect(nxt)
 
 
+@require_POST
+def delete_photo(request):
+    photo, nxt = _owned_photo(request)
+    if not photo:
+        return redirect("home")
+    photo.deleted_at = timezone.now()
+    photo.save(update_fields=["deleted_at"])
+    if photo.service_id:
+        qs = Photo.objects.filter(service_id=photo.service_id, deleted_at__isnull=True)
+    elif photo.company_id:
+        qs = Photo.objects.filter(company_id=photo.company_id, deleted_at__isnull=True)
+    else:
+        return redirect(nxt)
+    for n, item in enumerate(qs.order_by("sort_order", "id")):
+        if item.sort_order != n:
+            item.sort_order = n
+            item.save(update_fields=["sort_order"])
+    return redirect(nxt)
+
+
 def _owned_photo(request):
     photo = get_object_or_404(Photo.objects.filter(deleted_at__isnull=True), pk=request.POST.get("pk"))
     owner_id = None

@@ -121,7 +121,15 @@
     });
   }
 
-  document.querySelectorAll("img").forEach(function (img) {
+  document.querySelectorAll("form.add-form").forEach(function (form) {
+    form.addEventListener("submit", function () {
+      var btn = document.querySelector('button[form="' + form.id + '"]') || form.querySelector(".btn");
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Сохранение…";
+      }
+    });
+  });
     img.addEventListener("error", function () {
       if (img.dataset.retry) return;
       img.dataset.retry = "1";

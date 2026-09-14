@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
-<form class="pad add-form" method="post" enctype="multipart/form-data">
+<div class="pad">
+<form id="edit-main" class="add-form" method="post" enctype="multipart/form-data">
   {% csrf_token %}
   <label class="label" for="name">Название</label>
   <input id="name" name="name" required minlength="2" maxlength="80" value="{{ item.name }}">
@@ -42,46 +43,52 @@
   </div>
   {% endif %}
 
-  {% if photos %}
+  <p class="label">Добавить фото</p>
+  <p class="muted tiny">Необязательно. Новые снимки добавятся к текущим.</p>
+  <input type="file" name="photos" accept="image/*" multiple>
+</form>
+
+{% if photos %}
   <p class="label">Текущие фото</p>
-  <p class="muted tiny">Первое фото — обложка. Стрелки меняют порядок, «Заменить» ставит новый снимок на это место.</p>
+  <p class="muted tiny">Первое фото — обложка. Стрелки меняют порядок.</p>
   <div class="photo-edit">
     {% for photo in photos %}
       <div class="photo-edit-item">
         <img src="{{ photo.src }}" alt="">
-        <div class="photo-move">
+        <div class="photo-tools">
           <form method="post" action="{% url 'reorder_photo' %}">
             {% csrf_token %}
             <input type="hidden" name="pk" value="{{ photo.pk }}">
             <input type="hidden" name="direction" value="left">
-            <button type="submit" {% if forloop.first %}disabled{% endif %}>‹</button>
+            <button class="photo-btn" type="submit" {% if forloop.first %}disabled{% endif %}>‹</button>
           </form>
           <form method="post" action="{% url 'reorder_photo' %}">
             {% csrf_token %}
             <input type="hidden" name="pk" value="{{ photo.pk }}">
             <input type="hidden" name="direction" value="right">
-            <button type="submit" {% if forloop.last %}disabled{% endif %}>›</button>
+            <button class="photo-btn" type="submit" {% if forloop.last %}disabled{% endif %}>›</button>
+          </form>
+          <form method="post" action="{% url 'replace_photo' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="pk" value="{{ photo.pk }}">
+            <label class="photo-btn">Заменить
+              <input type="file" name="photo" accept="image/*" onchange="this.form.submit()">
+            </label>
+          </form>
+          <form method="post" action="{% url 'delete_photo' %}" data-confirm="Вы уверены, что хотите удалить фото?">
+            {% csrf_token %}
+            <input type="hidden" name="pk" value="{{ photo.pk }}">
+            <button class="photo-btn danger" type="submit">Удалить</button>
           </form>
         </div>
-        <form method="post" action="{% url 'replace_photo' %}" enctype="multipart/form-data">
-          {% csrf_token %}
-          <input type="hidden" name="pk" value="{{ photo.pk }}">
-          <label class="photo-replace">Заменить
-            <input type="file" name="photo" accept="image/*" onchange="this.form.submit()">
-          </label>
-        </form>
       </div>
     {% endfor %}
   </div>
-  {% endif %}
+{% endif %}
 
-  <p class="label">Добавить фото</p>
-  <p class="muted tiny">Необязательно. Старые снимки останутся, новые добавятся.</p>
-  <input type="file" name="photos" accept="image/*" multiple>
-
-  {% if error %}<p class="error">{{ error }}</p>{% endif %}
-  <button class="btn" type="submit">Сохранить</button>
-</form>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<button class="btn" type="submit" form="edit-main">Сохранить</button>
+</div>
 {% endblock %}
 {% block extra_js %}
 {% if kind == "company" %}
@@ -99,6 +106,7 @@
     const lat = latInput.value;
     const lng = lngInput.value;
     const q = encodeURIComponent(address.value || '');
+    if (!frame) return;
     if (provider() === 'google') {
       if (lat && lng) frame.src = `https://maps.google.com/maps?q=${lat},${lng}&hl=ru&z=16&output=embed`;
       else if (address.value) frame.src = `https://maps.google.com/maps?q=${q}&hl=ru&z=16&output=embed`;
@@ -109,30 +117,32 @@
   }
   function hideSuggest() { suggest.hidden = true; suggest.innerHTML = ''; }
   const suggestUrl = "{% url 'geo_suggest' %}";
-  address.addEventListener('input', function () {
-    clearTimeout(timer);
-    const q = address.value.trim();
-    if (q.length < 2) { hideSuggest(); return; }
-    timer = setTimeout(async function () {
-      const res = await fetch(suggestUrl + '?q=' + encodeURIComponent(q), { credentials: 'same-origin' });
-      const data = await res.json();
-      suggest.innerHTML = '';
-      (data.items || []).forEach(function (item) {
-        const li = document.createElement('li');
-        li.textContent = item.label;
-        li.addEventListener('mousedown', function (e) {
-          e.preventDefault();
-          address.value = item.label;
-          latInput.value = item.lat;
-          lngInput.value = item.lng;
-          hideSuggest();
-          updateMap();
+  if (address) {
+    address.addEventListener('input', function () {
+      clearTimeout(timer);
+      const q = address.value.trim();
+      if (q.length < 2) { hideSuggest(); return; }
+      timer = setTimeout(async function () {
+        const res = await fetch(suggestUrl + '?q=' + encodeURIComponent(q), { credentials: 'same-origin' });
+        const data = await res.json();
+        suggest.innerHTML = '';
+        (data.items || []).forEach(function (item) {
+          const li = document.createElement('li');
+          li.textContent = item.label;
+          li.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+            address.value = item.label;
+            latInput.value = item.lat;
+            lngInput.value = item.lng;
+            hideSuggest();
+            updateMap();
+          });
+          suggest.appendChild(li);
         });
-        suggest.appendChild(li);
-      });
-      suggest.hidden = !suggest.children.length;
-    }, 280);
-  });
+        suggest.hidden = !suggest.children.length;
+      }, 280);
+    });
+  }
   document.querySelectorAll('input[name=map_provider]').forEach((el) => el.addEventListener('change', function () {
     document.querySelectorAll('input[name=map_provider]').forEach((r) => r.parentElement.classList.toggle('on', r.checked));
     updateMap();
