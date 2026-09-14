@@ -160,7 +160,7 @@ button, input, textarea { font: inherit; font-size: 16px; }
   position: absolute;
   top: .45rem;
   right: .45rem;
-  z-index: 2;
+  z-index: 1;
   width: 28px;
   height: 28px;
   display: grid;
@@ -207,7 +207,13 @@ button, input, textarea { font: inherit; font-size: 16px; }
   background: var(--primary); color: var(--primary-fg); font-weight: 500;
 }
 .empty { background: var(--bg); border-radius: .75rem; padding: 1.5rem 1rem; color: var(--muted); font-size: 14px; }
-.sticky-bar { position: sticky; top: 0; background: color-mix(in oklab, var(--surface) 95%, transparent); padding: .75rem 0 .25rem; backdrop-filter: blur(8px); }
+.sticky-bar {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  background: var(--surface);
+  padding: .75rem 0 .25rem;
+}
 .carousel-main { position: relative; }
 .carousel-track { display: flex; aspect-ratio: 4/3; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .carousel-track::-webkit-scrollbar { display: none; }

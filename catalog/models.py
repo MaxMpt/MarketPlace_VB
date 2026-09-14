@@ -75,7 +75,7 @@ class Company(models.Model):
     objects = AliveQuerySet.as_manager()
 
     class Meta:
-        ordering = ["-rating_value", "id"]
+        ordering = ["-rating_value", "-rating_count", "id"]
 
     def cover(self):
         photo = self.photos.alive().order_by("sort_order", "id").first()
@@ -149,7 +149,7 @@ class Service(models.Model):
     objects = AliveQuerySet.as_manager()
 
     class Meta:
-        ordering = ["-rating_value", "id"]
+        ordering = ["-rating_value", "-rating_count", "id"]
 
     def cover(self):
         photo = self.photos.alive().order_by("sort_order", "id").first()
@@ -159,7 +159,7 @@ class Service(models.Model):
         if self.price_note:
             return self.price_note
         if self.price_cents is None:
-            return "договорная"
+            return "Договорная"
         rub = round(self.price_cents / 100)
         return f"от {rub:,}".replace(",", " ") + " ₽"
 

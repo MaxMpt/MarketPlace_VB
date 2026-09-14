@@ -19,12 +19,12 @@ def home(request):
         Service.objects.alive()
         .select_related("category", "create_user")
         .prefetch_related(_photos())
-        .order_by("-rating_value", "id")[:3]
+        .order_by("-rating_value", "-rating_count", "id")[:3]
     )
     companies = (
         Company.objects.alive()
         .prefetch_related(_photos())
-        .order_by("-rating_value", "id")[:2]
+        .order_by("-rating_value", "-rating_count", "id")[:2]
     )
     return render(
         request,
@@ -42,7 +42,9 @@ def home(request):
 
 def services_list(request):
     slug = request.GET.get("cat") or ""
-    qs = Service.objects.alive().select_related("category", "create_user").prefetch_related(_photos())
+    qs = Service.objects.alive().select_related("category", "create_user").prefetch_related(_photos()).order_by(
+        "-rating_value", "-rating_count", "id"
+    )
     if slug:
         qs = qs.filter(category__slug=slug)
     return render(
@@ -108,7 +110,7 @@ def service_detail(request, pk):
 
 
 def companies_list(request):
-    companies = Company.objects.alive().prefetch_related(_photos())
+    companies = Company.objects.alive().prefetch_related(_photos()).order_by("-rating_value", "-rating_count", "id")
     return render(
         request,
         "catalog/companies.html",
