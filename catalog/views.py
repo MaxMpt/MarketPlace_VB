@@ -159,10 +159,7 @@ def profile(request):
             "listing_count": listings.count() + companies.count(),
             "title": "Профиль",
             "notify_reviews": prefs.notify_reviews,
-            "support_url": telegram_contact_url(
-                "ima_ecosystem",
-                "Здравствуйте! Нашёл баг в каталоге двора Восточное Бутово 2.",
-            ),
+            "support_url": "https://t.me/ima_ecosystem?direct",
         },
     )
 

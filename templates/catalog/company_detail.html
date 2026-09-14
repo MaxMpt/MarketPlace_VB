@@ -45,7 +45,7 @@
         </div>
         {% if r.review_text %}<p>{{ r.review_text }}</p>{% endif %}
         {% with photo=r.photos.all.0 %}
-          {% if photo %}<img class="review-photo" src="{{ photo.src }}" alt="">{% endif %}
+          {% if photo %}<img class="review-photo" src="{{ photo.src }}" alt="" data-zoom>{% endif %}
         {% endwith %}
         {% if is_admin %}
           <form method="post" action="{% url 'delete_review' %}" data-confirm="Вы уверены, что хотите удалить комментарий?">

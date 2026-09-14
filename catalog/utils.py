@@ -3,7 +3,7 @@ import re
 from urllib.parse import quote
 
 from django.core.files.base import ContentFile
-from PIL import Image
+from PIL import Image, ImageOps
 
 
 def format_rating(value):
@@ -23,6 +23,7 @@ def star_range(value, count=5):
 
 def save_resized_image(django_file, name: str) -> ContentFile:
     image = Image.open(django_file)
+    image = ImageOps.exif_transpose(image) or image
     image = image.convert("RGB")
     image.thumbnail((720, 720))
     buf = BytesIO()

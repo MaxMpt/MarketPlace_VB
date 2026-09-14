@@ -120,4 +120,28 @@
         .then(function (html) { fillCards(html); });
     });
   }
+
+  document.querySelectorAll("img").forEach(function (img) {
+    img.addEventListener("error", function () {
+      if (img.dataset.retry) return;
+      img.dataset.retry = "1";
+      var src = img.getAttribute("src");
+      if (!src) return;
+      setTimeout(function () {
+        img.src = src.split("?")[0] + "?r=" + Date.now();
+      }, 500);
+    });
+  });
+
+  document.addEventListener("click", function (e) {
+    var img = e.target.closest("[data-zoom]");
+    if (!img || !img.src) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var box = document.createElement("div");
+    box.className = "lightbox";
+    box.innerHTML = "<img src=\"" + img.src + "\" alt=\"\">";
+    box.addEventListener("click", function () { box.remove(); });
+    document.body.appendChild(box);
+  });
 })();

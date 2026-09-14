@@ -3,7 +3,7 @@
   <div class="carousel-main">
     <div class="carousel-track" data-scroller>
       {% for photo in photos %}
-        <img src="{{ photo.src }}" alt="" draggable="false">
+        <img src="{{ photo.src }}" alt="" draggable="false" data-zoom decoding="async">
       {% endfor %}
     </div>
     {% if photos|length > 1 %}
