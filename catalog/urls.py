@@ -22,7 +22,7 @@ urlpatterns = [
     path("profile/notify/", views.toggle_notify, name="toggle_notify"),
     path("profile/delete/", views.delete_listing, name="delete_listing"),
     path("reviews/delete/", views.delete_review, name="delete_review"),
-    path("add/", views.add_listing, name="add"),
+    path("photos/rotate/", views.rotate_photo, name="rotate_photo"),
     path("geo/suggest/", views.geo_suggest, name="geo_suggest"),
     path("reviews/add/", views.add_review, name="add_review"),
 ]

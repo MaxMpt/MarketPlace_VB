@@ -31,6 +31,18 @@ def save_resized_image(django_file, name: str) -> ContentFile:
     return ContentFile(buf.getvalue(), name=name.rsplit(".", 1)[0][:40] + ".jpg")
 
 
+def rotate_saved_image(django_file, degrees: int = 90) -> ContentFile:
+    image = Image.open(django_file)
+    image = image.convert("RGB")
+    image = image.rotate(-degrees, expand=True)
+    buf = BytesIO()
+    image.save(buf, format="JPEG", quality=70, optimize=True)
+    name = getattr(django_file, "name", "photo.jpg").rsplit("/", 1)[-1]
+    if "." in name:
+        name = name.rsplit(".", 1)[0][:40] + ".jpg"
+    return ContentFile(buf.getvalue(), name=name)
+
+
 def parse_price_input(raw: str):
     text = (raw or "").strip()
     if not text:

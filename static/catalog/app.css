@@ -232,13 +232,19 @@ button, input, textarea { font: inherit; font-size: 16px; }
   place-items: center;
   padding: 1rem;
 }
-.lightbox img {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
-  object-fit: contain;
-  outline: 0;
+.photo-edit { display: flex; gap: .5rem; overflow-x: auto; padding: .25rem 0 .5rem; }
+.photo-edit-item { flex-shrink: 0; width: 7rem; }
+.photo-edit-item img { width: 7rem; height: 7rem; object-fit: contain; background: var(--bg); border-radius: .5rem; }
+.photo-edit-item button {
+  width: 100%;
+  margin-top: .35rem;
+  height: 1.75rem;
+  border: 0;
+  border-radius: .5rem;
+  background: var(--bg);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
 }
 .review { display: block; background: var(--bg); border-radius: .75rem; padding: .75rem; }
 .review-gone { opacity: .65; pointer-events: none; }

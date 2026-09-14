@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 from .models import Company, Photo, RatingReview, Service, ServiceCategory, UserSettings
 from .notify import is_admin, login_of, notify_admins, send_telegram, stars_word
-from .utils import parse_price_input, save_resized_image, telegram_contact_url
+from .utils import parse_price_input, rotate_saved_image, save_resized_image, telegram_contact_url
 
 
 def _photos():
@@ -337,6 +337,7 @@ def edit_service(request, pk):
             "item": service,
             "categories": ServiceCategory.objects.alive(),
             "price_value": _price_field(service),
+            "photos": service.photos.filter(deleted_at__isnull=True),
             "error": error,
             "title": "Изменить услугу",
             "back": f"/services/{service.pk}/",
@@ -377,11 +378,38 @@ def edit_company(request, pk):
         {
             "kind": "company",
             "item": company,
+            "photos": company.photos.filter(deleted_at__isnull=True),
             "error": error,
             "title": "Изменить компанию",
             "back": f"/companies/{company.pk}/",
         },
     )
+
+
+@require_POST
+def rotate_photo(request):
+    photo = get_object_or_404(Photo.objects.filter(deleted_at__isnull=True), pk=request.POST.get("pk"))
+    owner_id = None
+    nxt = "/"
+    if photo.service_id:
+        owner_id = photo.service.create_user_id
+        nxt = f"/services/{photo.service_id}/edit/"
+    elif photo.company_id:
+        owner_id = photo.company.create_user_id
+        nxt = f"/companies/{photo.company_id}/edit/"
+    elif photo.review_id:
+        owner_id = photo.review.create_user_id
+        if photo.review.service_id:
+            nxt = f"/services/{photo.review.service_id}/"
+        elif photo.review.company_id:
+            nxt = f"/companies/{photo.review.company_id}/"
+    if owner_id != request.resident.id and not is_admin(request.resident):
+        return redirect("home")
+    if photo.image:
+        photo.image.open("rb")
+        content = rotate_saved_image(photo.image, 90)
+        photo.image.save(content.name, content, save=True)
+    return redirect(nxt)
 
 
 @require_POST

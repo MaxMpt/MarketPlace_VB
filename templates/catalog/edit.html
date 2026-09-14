@@ -42,6 +42,23 @@
   </div>
   {% endif %}
 
+  {% if photos %}
+  <p class="label">Текущие фото</p>
+  <p class="muted tiny">Нажмите «Повернуть», если снимок лёг на бок. Каждый клик — на 90°.</p>
+  <div class="photo-edit">
+    {% for photo in photos %}
+      <div class="photo-edit-item">
+        <img src="{{ photo.src }}" alt="">
+        <form method="post" action="{% url 'rotate_photo' %}">
+          {% csrf_token %}
+          <input type="hidden" name="pk" value="{{ photo.pk }}">
+          <button type="submit">Повернуть</button>
+        </form>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <p class="label">Добавить фото</p>
   <p class="muted tiny">Необязательно. Старые снимки останутся, новые добавятся.</p>
   <input type="file" name="photos" accept="image/*" multiple>
