@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 from .models import Company, Photo, RatingReview, Service, ServiceCategory, UserSettings
 from .notify import is_admin, login_of, notify_admins, send_telegram, stars_word
-from .utils import parse_price_input, rotate_saved_image, save_resized_image, telegram_contact_url
+from .utils import parse_price_input, save_resized_image, telegram_contact_url
 
 
 def _photos():
@@ -337,7 +337,7 @@ def edit_service(request, pk):
             "item": service,
             "categories": ServiceCategory.objects.alive(),
             "price_value": _price_field(service),
-            "photos": service.photos.filter(deleted_at__isnull=True),
+            "photos": service.photos.filter(deleted_at__isnull=True).order_by("sort_order", "id"),
             "error": error,
             "title": "Изменить услугу",
             "back": f"/services/{service.pk}/",
@@ -378,7 +378,7 @@ def edit_company(request, pk):
         {
             "kind": "company",
             "item": company,
-            "photos": company.photos.filter(deleted_at__isnull=True),
+            "photos": company.photos.filter(deleted_at__isnull=True).order_by("sort_order", "id"),
             "error": error,
             "title": "Изменить компанию",
             "back": f"/companies/{company.pk}/",
@@ -387,7 +387,42 @@ def edit_company(request, pk):
 
 
 @require_POST
-def rotate_photo(request):
+def replace_photo(request):
+    photo, nxt = _owned_photo(request)
+    if not photo:
+        return redirect("home")
+    uploaded = request.FILES.get("photo")
+    if uploaded and getattr(uploaded, "content_type", "").startswith("image/"):
+        content = save_resized_image(uploaded, uploaded.name)
+        photo.image.save(content.name, content, save=True)
+    return redirect(nxt)
+
+
+@require_POST
+def reorder_photo(request):
+    photo, nxt = _owned_photo(request)
+    if not photo:
+        return redirect("home")
+    if photo.service_id:
+        qs = Photo.objects.filter(service_id=photo.service_id, deleted_at__isnull=True)
+    elif photo.company_id:
+        qs = Photo.objects.filter(company_id=photo.company_id, deleted_at__isnull=True)
+    else:
+        return redirect(nxt)
+    photos = list(qs.order_by("sort_order", "id"))
+    ids = [p.pk for p in photos]
+    i = ids.index(photo.pk)
+    j = i - 1 if request.POST.get("direction") == "left" else i + 1
+    if 0 <= j < len(photos):
+        photos[i], photos[j] = photos[j], photos[i]
+        for n, item in enumerate(photos):
+            if item.sort_order != n:
+                item.sort_order = n
+                item.save(update_fields=["sort_order"])
+    return redirect(nxt)
+
+
+def _owned_photo(request):
     photo = get_object_or_404(Photo.objects.filter(deleted_at__isnull=True), pk=request.POST.get("pk"))
     owner_id = None
     nxt = "/"
@@ -397,19 +432,9 @@ def rotate_photo(request):
     elif photo.company_id:
         owner_id = photo.company.create_user_id
         nxt = f"/companies/{photo.company_id}/edit/"
-    elif photo.review_id:
-        owner_id = photo.review.create_user_id
-        if photo.review.service_id:
-            nxt = f"/services/{photo.review.service_id}/"
-        elif photo.review.company_id:
-            nxt = f"/companies/{photo.review.company_id}/"
     if owner_id != request.resident.id and not is_admin(request.resident):
-        return redirect("home")
-    if photo.image:
-        photo.image.open("rb")
-        content = rotate_saved_image(photo.image, 90)
-        photo.image.save(content.name, content, save=True)
-    return redirect(nxt)
+        return None, "/"
+    return photo, nxt
 
 
 @require_POST

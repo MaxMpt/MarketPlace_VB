@@ -233,11 +233,11 @@ button, input, textarea { font: inherit; font-size: 16px; }
   padding: 1rem;
 }
 .photo-edit { display: flex; gap: .5rem; overflow-x: auto; padding: .25rem 0 .5rem; }
-.photo-edit-item { flex-shrink: 0; width: 7rem; }
-.photo-edit-item img { width: 7rem; height: 7rem; object-fit: contain; background: var(--bg); border-radius: .5rem; }
-.photo-edit-item button {
-  width: 100%;
-  margin-top: .35rem;
+.photo-edit-item { flex-shrink: 0; width: 7.25rem; }
+.photo-edit-item img { width: 7.25rem; height: 7.25rem; object-fit: contain; background: var(--bg); border-radius: .5rem; }
+.photo-move { display: flex; gap: .25rem; margin: .35rem 0; }
+.photo-move button, .photo-replace {
+  flex: 1;
   height: 1.75rem;
   border: 0;
   border-radius: .5rem;
@@ -245,7 +245,11 @@ button, input, textarea { font: inherit; font-size: 16px; }
   color: var(--primary);
   font-size: 12px;
   font-weight: 600;
+  display: grid;
+  place-items: center;
 }
+.photo-move button:disabled { opacity: .35; }
+.photo-replace input { display: none; }
 .review { display: block; background: var(--bg); border-radius: .75rem; padding: .75rem; }
 .review-gone { opacity: .65; pointer-events: none; }
 .review-head { display: flex; justify-content: space-between; gap: .5rem; font-size: 14px; font-weight: 500; }

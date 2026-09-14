@@ -1,4 +1,3 @@
-
 from django.http import JsonResponse
 from django.urls import path
 
@@ -23,7 +22,8 @@ urlpatterns = [
     path("profile/notify/", views.toggle_notify, name="toggle_notify"),
     path("profile/delete/", views.delete_listing, name="delete_listing"),
     path("reviews/delete/", views.delete_review, name="delete_review"),
-    path("photos/rotate/", views.rotate_photo, name="rotate_photo"),
+    path("photos/replace/", views.replace_photo, name="replace_photo"),
+    path("photos/reorder/", views.reorder_photo, name="reorder_photo"),
     path("add/", views.add_listing, name="add"),
     path("geo/suggest/", views.geo_suggest, name="geo_suggest"),
     path("reviews/add/", views.add_review, name="add_review"),

@@ -44,15 +44,31 @@
 
   {% if photos %}
   <p class="label">Текущие фото</p>
-  <p class="muted tiny">Нажмите «Повернуть», если снимок лёг на бок. Каждый клик — на 90°.</p>
+  <p class="muted tiny">Первое фото — обложка. Стрелки меняют порядок, «Заменить» ставит новый снимок на это место.</p>
   <div class="photo-edit">
     {% for photo in photos %}
       <div class="photo-edit-item">
         <img src="{{ photo.src }}" alt="">
-        <form method="post" action="{% url 'rotate_photo' %}">
+        <div class="photo-move">
+          <form method="post" action="{% url 'reorder_photo' %}">
+            {% csrf_token %}
+            <input type="hidden" name="pk" value="{{ photo.pk }}">
+            <input type="hidden" name="direction" value="left">
+            <button type="submit" {% if forloop.first %}disabled{% endif %}>‹</button>
+          </form>
+          <form method="post" action="{% url 'reorder_photo' %}">
+            {% csrf_token %}
+            <input type="hidden" name="pk" value="{{ photo.pk }}">
+            <input type="hidden" name="direction" value="right">
+            <button type="submit" {% if forloop.last %}disabled{% endif %}>›</button>
+          </form>
+        </div>
+        <form method="post" action="{% url 'replace_photo' %}" enctype="multipart/form-data">
           {% csrf_token %}
           <input type="hidden" name="pk" value="{{ photo.pk }}">
-          <button type="submit">Повернуть</button>
+          <label class="photo-replace">Заменить
+            <input type="file" name="photo" accept="image/*" onchange="this.form.submit()">
+          </label>
         </form>
       </div>
     {% endfor %}
