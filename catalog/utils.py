@@ -1,5 +1,7 @@
 from io import BytesIO
+import json
 import re
+import urllib.request
 from urllib.parse import quote
 
 from django.core.files.base import ContentFile
@@ -56,16 +58,77 @@ def parse_price_input(raw: str):
     return None, text
 
 
+_bot_username_cache = ""
+
+
+def telegram_bot_username() -> str:
+    global _bot_username_cache
+    from django.conf import settings
+
+    if settings.TELEGRAM_BOT_USERNAME:
+        return settings.TELEGRAM_BOT_USERNAME.lstrip("@")
+    if _bot_username_cache:
+        return _bot_username_cache
+    token = settings.TELEGRAM_BOT_TOKEN
+    if not token:
+        return ""
+    try:
+        with urllib.request.urlopen(
+            f"https://api.telegram.org/bot{token}/getMe", timeout=4
+        ) as resp:
+            data = json.loads(resp.read().decode())
+        name = ((data.get("result") or {}).get("username") or "").lstrip("@")
+        if name:
+            _bot_username_cache = name
+        return name
+    except Exception:
+        return ""
+
+
+def telegram_app_link(start_param: str = "") -> str:
+    name = telegram_bot_username()
+    if not name:
+        from django.conf import settings
+
+        return settings.MINI_APP_URL
+    if start_param:
+        return f"https://t.me/{name}?startapp={start_param}"
+    return f"https://t.me/{name}"
+
+
+def listing_share(kind: str, item) -> dict:
+    from django.conf import settings
+
+    param = f"{'s' if kind == 'service' else 'c'}{item.pk}"
+    deep = telegram_app_link(param)
+    rating = getattr(item, "rating_value", 0) or 0
+    count = getattr(item, "rating_count", 0) or 0
+    if count:
+        rating_line = f"{str(rating).replace('.', ',')} · {count} оценок"
+    else:
+        rating_line = "пока нет оценок"
+    parts = [item.name]
+    meta = []
+    if kind == "service" and getattr(item, "category", None):
+        meta.append(item.category.title)
+    meta.append(rating_line)
+    parts.append(" · ".join(meta))
+    if kind == "service":
+        parts.append(item.price_label)
+    if item.description:
+        parts.append("")
+        parts.append(item.description.strip())
+    parts.append("")
+    parts.append(deep)
+    text = "\n".join(parts)
+    photo = item.cover() or ""
+    if photo.startswith("/"):
+        photo = settings.MINI_APP_URL.rstrip("/") + photo
+    share = f"https://t.me/share/url?url={quote(deep, safe='')}&text={quote(text)}"
+    return {"url": share, "deep": deep, "text": text, "photo": photo}
+
+
 def telegram_contact_url(username: str, text: str) -> str:
     if not username:
         return ""
     return f"https://t.me/{username}?text={quote(text)}"
-
-
-def share_url(path: str, title: str) -> str:
-    from django.conf import settings
-
-    base = (settings.MINI_APP_URL or "").rstrip("/")
-    page = f"{base}{path}"
-    text = f"{title} — каталог двора Восточное Бутово 2"
-    return f"https://t.me/share/url?url={quote(page, safe='')}&text={quote(text)}"

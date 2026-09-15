@@ -23,6 +23,7 @@ DEBUG = os.environ.get("DEBUG", "true").lower() in {"1", "true", "yes"}
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "*").split(",") if h.strip()]
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "") or os.environ.get("BOT_TOKEN", "")
+TELEGRAM_BOT_USERNAME = os.environ.get("TELEGRAM_BOT_USERNAME", "").lstrip("@")
 MINI_APP_URL = os.environ.get("MINI_APP_URL", "http://127.0.0.1:8000/")
 if not MINI_APP_URL.endswith("/"):
     MINI_APP_URL += "/"

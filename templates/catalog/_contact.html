@@ -5,10 +5,14 @@
     Написать
   </a>
   {% endif %}
-  {% if share_url %}
-  <a class="btn-share {% if not contact_url %}wide{% endif %}" href="{{ share_url }}" data-tg-link aria-label="Поделиться">
+  {% if share %}
+  <button type="button" class="btn-share {% if not contact_url %}wide{% endif %}" aria-label="Поделиться"
+    data-share
+    data-share-url="{{ share.deep }}"
+    data-share-text="{{ share.text|escapejs }}"
+    data-share-photo="{{ share.photo }}">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-  </a>
+  </button>
   {% endif %}
 </div>
 {% if contact_url %}

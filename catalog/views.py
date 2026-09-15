@@ -1,13 +1,15 @@
 from django.db.models import Prefetch
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from urllib.parse import quote
+import json
 
 from .models import Company, Photo, RatingReview, Service, ServiceCategory, UserSettings
 from .notify import is_admin, login_of, notify_admins, send_telegram, stars_word
-from .utils import parse_price_input, save_resized_image, share_url, telegram_contact_url
+from .utils import listing_share, parse_price_input, save_resized_image, telegram_contact_url
 
 
 def _photos():
@@ -102,7 +104,7 @@ def service_detail(request, pk):
             "reviews": reviews,
             "my_review": my_review,
             "contact_url": _contact(request, service.create_user, service.name, "service"),
-            "share_url": share_url(f"/services/{service.pk}/", service.name),
+            "share": listing_share("service", service),
             "is_admin": is_admin(request.resident),
             "title": service.name,
             "back": "/services/",
@@ -134,7 +136,7 @@ def company_detail(request, pk):
             "photos": company.photos.alive(),
             "reviews": reviews,
             "my_review": my_review,
-            "share_url": share_url(f"/companies/{company.pk}/", company.name),
+            "share": listing_share("company", company),
             "is_admin": is_admin(request.resident),
             "title": company.name,
             "back": "/companies/",
@@ -623,3 +625,21 @@ def _photon_suggest(q: str):
             continue
         items.append({"label": label, "lat": coords[1], "lng": coords[0]})
     return items
+
+
+@csrf_exempt
+def telegram_webhook(request):
+    if request.method != "POST":
+        return HttpResponse("ok")
+    try:
+        data = json.loads(request.body.decode() or "{}")
+    except json.JSONDecodeError:
+        return HttpResponse("ok")
+    msg = data.get("message") or {}
+    text = msg.get("text") or ""
+    chat_id = (msg.get("chat") or {}).get("id")
+    if chat_id and text.startswith("/start"):
+        from .notify import send_start_card
+
+        send_start_card(chat_id)
+    return HttpResponse("ok")

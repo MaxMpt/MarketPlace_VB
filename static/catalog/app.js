@@ -18,6 +18,18 @@
   if (tg && tg.initData) {
     document.cookie = "tg_init=" + encodeURIComponent(tg.initData) + flags;
   }
+  var startParam = tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param;
+  if (startParam) {
+    var go = "";
+    var sm = String(startParam).match(/^s(\d+)$/);
+    var cm = String(startParam).match(/^c(\d+)$/);
+    if (sm) go = "/services/" + sm[1] + "/";
+    if (cm) go = "/companies/" + cm[1] + "/";
+    if (go && location.pathname !== go) {
+      location.replace(go);
+      return;
+    }
+  }
   function injectInit(form) {
     if (!form || !tg || !tg.initData) return;
     var existing = form.querySelector("input[name=_tg_init]");
@@ -75,6 +87,42 @@
   } else {
     document.documentElement.style.setProperty("--app-height", window.innerHeight + "px");
   }
+
+  document.querySelectorAll("[data-share]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var url = btn.getAttribute("data-share-url") || "";
+      var text = btn.getAttribute("data-share-text") || "";
+      var photo = btn.getAttribute("data-share-photo") || "";
+      function fallback() {
+        var share = "https://t.me/share/url?url=" + encodeURIComponent(url) + "&text=" + encodeURIComponent(text);
+        try {
+          if (tg && tg.openTelegramLink) tg.openTelegramLink(share);
+          else window.open(share, "_blank");
+        } catch (err) {
+          location.href = share;
+        }
+      }
+      if (!navigator.share) {
+        fallback();
+        return;
+      }
+      var payload = { title: "Каталог двора", text: text, url: url };
+      if (photo && navigator.canShare) {
+        fetch(photo)
+          .then(function (r) { return r.blob(); })
+          .then(function (blob) {
+            var file = new File([blob], "photo.jpg", { type: blob.type || "image/jpeg" });
+            if (navigator.canShare({ files: [file] })) {
+              return navigator.share({ title: payload.title, text: text, files: [file] });
+            }
+            return navigator.share(payload);
+          })
+          .catch(function () { fallback(); });
+        return;
+      }
+      navigator.share(payload).catch(function () { fallback(); });
+    });
+  });
 
   document.querySelectorAll("[data-tg-link]").forEach(function (a) {
     a.addEventListener("click", function (e) {

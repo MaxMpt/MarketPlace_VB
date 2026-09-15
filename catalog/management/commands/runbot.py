@@ -1,7 +1,9 @@
+
 from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
 
 from catalog.bot import build_app
+from catalog.notify import delete_telegram_webhook
 
 
 class Command(BaseCommand):
@@ -21,4 +23,5 @@ class Command(BaseCommand):
             )
         self.stdout.write(f"Mini App: {settings.MINI_APP_URL}")
         self.stdout.write("Бот запущен. В Telegram отправьте /start")
+        delete_telegram_webhook()
         build_app().run_polling(allowed_updates=["message"])
