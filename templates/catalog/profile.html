@@ -39,6 +39,7 @@
   <h3>Мои услуги</h3>
   <div class="stack">
     {% for s in listings %}
+      {% if forloop.counter == 3 %}<div class="fold" id="fold-services" hidden>{% endif %}
       {% url 'service_detail' s.pk as card_url %}
       {% url 'edit_service' s.pk as edit_url %}
       <div class="card-own">
@@ -53,6 +54,9 @@
           </form>
         </div>
       </div>
+      {% if forloop.last and listings|length > 2 %}</div>
+      <button type="button" class="fold-toggle" data-fold="fold-services" data-more="Развернуть ещё {{ listings|length|add:'-2' }}">Развернуть ещё {{ listings|length|add:"-2" }}</button>
+      {% endif %}
     {% empty %}
       <p class="empty">Пока нет объявлений. Нажмите «Новая карточка», если оказываете услугу соседям.</p>
     {% endfor %}
@@ -64,6 +68,7 @@
   <h3>Мои компании</h3>
   <div class="stack">
     {% for c in my_companies %}
+      {% if forloop.counter == 3 %}<div class="fold" id="fold-companies" hidden>{% endif %}
       {% url 'company_detail' c.pk as card_url %}
       {% url 'edit_company' c.pk as edit_url %}
       <div class="card-own">
@@ -78,6 +83,9 @@
           </form>
         </div>
       </div>
+      {% if forloop.last and my_companies|length > 2 %}</div>
+      <button type="button" class="fold-toggle" data-fold="fold-companies" data-more="Развернуть ещё {{ my_companies|length|add:'-2' }}">Развернуть ещё {{ my_companies|length|add:"-2" }}</button>
+      {% endif %}
     {% endfor %}
   </div>
 </section>
@@ -87,6 +95,7 @@
   <h3>Мои отзывы</h3>
   <div class="stack">
     {% for r in reviews %}
+      {% if forloop.counter == 3 %}<div class="fold" id="fold-reviews" hidden>{% endif %}
       {% if r.target_url %}
       <a class="review" href="{{ r.target_url }}">
       {% else %}
@@ -98,6 +107,9 @@
         </div>
         {% if r.review_text %}<p>{{ r.review_text }}</p>{% endif %}
       {% if r.target_url %}</a>{% else %}</div>{% endif %}
+      {% if forloop.last and reviews|length > 2 %}</div>
+      <button type="button" class="fold-toggle" data-fold="fold-reviews" data-more="Развернуть ещё {{ reviews|length|add:'-2' }}">Развернуть ещё {{ reviews|length|add:"-2" }}</button>
+      {% endif %}
     {% empty %}
       <p class="empty">Оцените услугу или компанию — отзыв появится здесь.</p>
     {% endfor %}

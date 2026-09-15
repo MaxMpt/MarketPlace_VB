@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 from .models import Company, Photo, RatingReview, Service, ServiceCategory, UserSettings
 from .notify import is_admin, login_of, notify_admins, send_telegram, stars_word
-from .utils import parse_price_input, save_resized_image, telegram_contact_url
+from .utils import parse_price_input, save_resized_image, share_url, telegram_contact_url
 
 
 def _photos():
@@ -102,6 +102,7 @@ def service_detail(request, pk):
             "reviews": reviews,
             "my_review": my_review,
             "contact_url": _contact(request, service.create_user, service.name, "service"),
+            "share_url": share_url(f"/services/{service.pk}/", service.name),
             "is_admin": is_admin(request.resident),
             "title": service.name,
             "back": "/services/",
@@ -133,6 +134,7 @@ def company_detail(request, pk):
             "photos": company.photos.alive(),
             "reviews": reviews,
             "my_review": my_review,
+            "share_url": share_url(f"/companies/{company.pk}/", company.name),
             "is_admin": is_admin(request.resident),
             "title": company.name,
             "back": "/companies/",
@@ -168,10 +170,25 @@ def profile(request):
 
 @require_POST
 def toggle_theme(request):
-    settings, _ = UserSettings.objects.get_or_create(user=request.resident)
-    settings.theme = "light" if settings.theme == "dark" else "dark"
-    settings.save(update_fields=["theme", "updated_at"])
-    return redirect("profile")
+    settings_row, _ = UserSettings.objects.get_or_create(user=request.resident)
+    settings_row.theme = "light" if settings_row.theme == "dark" else "dark"
+    settings_row.save(update_fields=["theme", "updated_at"])
+    response = redirect("profile")
+    secure = True
+    try:
+        from django.conf import settings as dj
+        secure = (dj.MINI_APP_URL or "").startswith("https://")
+    except Exception:
+        pass
+    response.set_cookie(
+        "vb_theme",
+        settings_row.theme,
+        max_age=31536000,
+        path="/",
+        samesite="None" if secure else "Lax",
+        secure=secure,
+    )
+    return response
 
 
 @require_POST
@@ -303,7 +320,11 @@ def add_listing(request):
 
 
 def _can_edit(user, item):
-    return bool(item.create_user_id and (item.create_user_id == user.id or is_admin(user)))
+    if not user:
+        return False
+    if is_admin(user):
+        return True
+    return bool(item.create_user_id and item.create_user_id == user.id)
 
 
 def _price_field(service):

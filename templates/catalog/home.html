@@ -43,9 +43,9 @@
     {% for s in services %}
       {% url 'service_detail' s.pk as card_url %}
       {% url 'edit_service' s.pk as edit_url %}
-      <div class="{% if s.create_user_id == resident.id %}card-own{% endif %}">
+      <div class="{% if s.create_user_id == resident.id or is_admin %}card-own{% endif %}">
         {% include "catalog/_card.html" with href=card_url name=s.name subtitle=s.category.title rating=s.rating_value count=s.rating_count cover=s.cover price=s.price_label %}
-        {% if s.create_user_id == resident.id %}{% include "catalog/_edit_icon.html" %}{% endif %}
+        {% if s.create_user_id == resident.id or is_admin %}{% include "catalog/_edit_icon.html" %}{% endif %}
       </div>
     {% endfor %}
   </div>
@@ -60,9 +60,9 @@
     {% for c in companies %}
       {% url 'company_detail' c.pk as card_url %}
       {% url 'edit_company' c.pk as edit_url %}
-      <div class="{% if c.create_user_id == resident.id %}card-own{% endif %}">
+      <div class="{% if c.create_user_id == resident.id or is_admin %}card-own{% endif %}">
         {% include "catalog/_card.html" with href=card_url name=c.name subtitle=c.description rating=c.rating_value count=c.rating_count cover=c.cover %}
-        {% if c.create_user_id == resident.id %}{% include "catalog/_edit_icon.html" %}{% endif %}
+        {% if c.create_user_id == resident.id or is_admin %}{% include "catalog/_edit_icon.html" %}{% endif %}
       </div>
     {% endfor %}
   </div>

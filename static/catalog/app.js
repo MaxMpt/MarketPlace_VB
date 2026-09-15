@@ -62,7 +62,16 @@
       document.documentElement.style.setProperty("--tg-safe-bottom", bottom + "px");
     };
     apply();
-    if (tg.onEvent) tg.onEvent("viewportChanged", apply);
+    if (tg.onEvent) {
+      tg.onEvent("viewportChanged", apply);
+      tg.onEvent("themeChanged", function () {
+        if (document.cookie.match(/(?:^|; )vb_theme=(light|dark)/)) return;
+        var darkNow = tg.colorScheme === "dark";
+        document.documentElement.classList.toggle("dark", darkNow);
+        if (tg.setHeaderColor) tg.setHeaderColor(darkNow ? "#1c1c1e" : "#ffffff");
+        if (tg.setBackgroundColor) tg.setBackgroundColor(darkNow ? "#000000" : "#ffffff");
+      });
+    }
   } else {
     document.documentElement.style.setProperty("--app-height", window.innerHeight + "px");
   }
@@ -186,4 +195,26 @@
     box.addEventListener("click", function () { box.remove(); });
     document.body.appendChild(box);
   });
+
+  document.querySelectorAll("[data-fold]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var box = document.getElementById(btn.getAttribute("data-fold"));
+      if (!box) return;
+      var open = box.hidden;
+      box.hidden = !open;
+      btn.textContent = open ? "Свернуть" : (btn.getAttribute("data-more") || "Развернуть");
+    });
+  });
+
+  var hideBar = document.querySelector(".js-hide-bar");
+  var scroller = document.querySelector(".app-main");
+  if (hideBar && scroller) {
+    var lastY = 0;
+    scroller.addEventListener("scroll", function () {
+      var y = scroller.scrollTop;
+      if (y > lastY + 8 && y > 48) hideBar.classList.add("is-hidden");
+      else if (y < lastY - 8) hideBar.classList.remove("is-hidden");
+      lastY = y;
+    }, { passive: true });
+  }
 })();

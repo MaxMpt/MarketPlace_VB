@@ -60,3 +60,12 @@ def telegram_contact_url(username: str, text: str) -> str:
     if not username:
         return ""
     return f"https://t.me/{username}?text={quote(text)}"
+
+
+def share_url(path: str, title: str) -> str:
+    from django.conf import settings
+
+    base = (settings.MINI_APP_URL or "").rstrip("/")
+    page = f"{base}{path}"
+    text = f"{title} — каталог двора Восточное Бутово 2"
+    return f"https://t.me/share/url?url={quote(page, safe='')}&text={quote(text)}"

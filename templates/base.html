@@ -6,13 +6,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="{% if theme == 'dark' %}#1c1c1e{% else %}#ffffff{% endif %}">
   <title>{{ title|default:"ВБ2 Каталог" }}</title>
-  <link rel="stylesheet" href="{% static 'catalog/app.css' %}?v=15">
+  <link rel="stylesheet" href="{% static 'catalog/app.css' %}?v=17">
   {% block extra_head %}{% endblock %}
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    (function () {
+      var tg = window.Telegram && window.Telegram.WebApp;
+      if (tg && tg.ready) tg.ready();
+      var forced = (document.cookie.match(/(?:^|; )vb_theme=(light|dark)/) || [])[1];
+      var dark = forced ? forced === "dark" : !!(tg && tg.colorScheme === "dark");
+      document.documentElement.classList.toggle("dark", dark);
+    })();
+  </script>
 </head>
 <body>
   <div class="app-shell">
-    {% if back or tab != 'home' %}
+    {% if back or tab == 'profile' %}
     <header class="app-header">
       {% if back %}
         <a class="icon-btn" href="{{ back }}" aria-label="Назад">
@@ -47,7 +56,7 @@
       </a>
     </nav>
   </div>
-  <script src="{% static 'catalog/app.js' %}?v=16"></script>
+  <script src="{% static 'catalog/app.js' %}?v=17"></script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -6,7 +6,7 @@
   <p class="eyebrow muted">{{ service.category.title }}{% if service.create_user %} · {{ service.create_user.display_name }}{% endif %}</p>
   <div class="title-row">
     <h2 class="detail-title">{{ service.name }}</h2>
-    {% if service.create_user_id == resident.id %}
+    {% if service.create_user_id == resident.id or is_admin %}
       {% url 'edit_service' service.pk as edit_url %}
       {% include "catalog/_edit_icon.html" %}
     {% endif %}
