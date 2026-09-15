@@ -55,7 +55,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "catalog",
+    "catalog.apps.CatalogConfig",
 ]
 
 MIDDLEWARE = [
@@ -95,6 +95,9 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": DATA_DIR / "db.sqlite3",
+        "OPTIONS": {
+            "timeout": 30,
+        },
     }
 }
 

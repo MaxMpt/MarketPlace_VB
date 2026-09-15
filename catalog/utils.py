@@ -114,7 +114,9 @@ def listing_share(kind: str, item) -> dict:
     meta.append(rating_line)
     parts.append(" · ".join(meta))
     if kind == "service":
-        parts.append(item.price_label)
+        price = item.price_label() if callable(getattr(item, "price_label", None)) else getattr(item, "price_label", "")
+        if price:
+            parts.append(str(price))
     if item.description:
         parts.append("")
         parts.append(item.description.strip())
