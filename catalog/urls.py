@@ -28,5 +28,6 @@ urlpatterns = [
     path("add/", views.add_listing, name="add"),
     path("geo/suggest/", views.geo_suggest, name="geo_suggest"),
     path("reviews/add/", views.add_review, name="add_review"),
+    path("share/", views.share_listing, name="share_listing"),
     path("telegram/webhook/", views.telegram_webhook, name="telegram_webhook"),
 ]

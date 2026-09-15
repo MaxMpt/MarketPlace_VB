@@ -8,7 +8,7 @@ from urllib.parse import quote
 import json
 
 from .models import Company, Photo, RatingReview, Service, ServiceCategory, UserSettings
-from .notify import is_admin, login_of, notify_admins, send_telegram, stars_word
+from .notify import is_admin, login_of, notify_admins, send_share_card, send_telegram, stars_word
 from .utils import listing_share, parse_price_input, save_resized_image, telegram_contact_url
 
 
@@ -641,5 +641,31 @@ def telegram_webhook(request):
     if chat_id and text.startswith("/start"):
         from .notify import send_start_card
 
+        print("webhook /start from", chat_id, flush=True)
         send_start_card(chat_id)
     return HttpResponse("ok")
+
+
+@csrf_exempt
+@require_POST
+def share_listing(request):
+    if not getattr(request, "tg_real", False):
+        return JsonResponse({"ok": False, "error": "open_bot"}, status=403)
+    kind = request.POST.get("kind")
+    pk = request.POST.get("pk")
+    if kind == "service":
+        item = get_object_or_404(Service.objects.alive().select_related("category"), pk=pk)
+    elif kind == "company":
+        item = get_object_or_404(Company.objects.alive(), pk=pk)
+    else:
+        return JsonResponse({"ok": False}, status=400)
+    share = listing_share(kind, item)
+    ok = send_share_card(
+        request.resident.id,
+        share["photo"],
+        share["caption"],
+        share["deep"],
+    )
+    from .utils import telegram_bot_username
+
+    return JsonResponse({"ok": bool(ok), "bot": telegram_bot_username()})

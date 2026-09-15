@@ -34,7 +34,7 @@ def send_start_card(chat_id) -> None:
     markup = json.dumps(
         {"inline_keyboard": [[{"text": "Открыть каталог", "web_app": {"url": url}}]]}
     )
-    _bot_api(
+    result = _bot_api(
         "sendMessage",
         {
             "chat_id": int(chat_id),
@@ -47,13 +47,52 @@ def send_start_card(chat_id) -> None:
             "reply_markup": markup,
         },
     )
+    print("send_start_card", result, flush=True)
+
+
+def send_share_card(chat_id, photo_url: str, caption: str, button_url: str) -> bool:
+    markup = json.dumps(
+        {"inline_keyboard": [[{"text": "Открыть в каталоге", "url": button_url}]]}
+    )
+    if photo_url:
+        result = _bot_api(
+            "sendPhoto",
+            {
+                "chat_id": int(chat_id),
+                "photo": photo_url,
+                "caption": caption[:1024],
+                "parse_mode": "HTML",
+                "reply_markup": markup,
+            },
+            timeout=20,
+        )
+        if result.get("ok"):
+            return True
+        print("sendPhoto failed", result, flush=True)
+    result = _bot_api(
+        "sendMessage",
+        {
+            "chat_id": int(chat_id),
+            "text": caption[:3500],
+            "parse_mode": "HTML",
+            "reply_markup": markup,
+        },
+    )
+    print("send_share_card message", result, flush=True)
+    return bool(result.get("ok"))
 
 
 def set_telegram_webhook() -> None:
     url = (settings.MINI_APP_URL or "").rstrip("/") + "/telegram/webhook/"
     if not url.startswith("https://"):
+        print("setWebhook skipped, MINI_APP_URL is not https:", settings.MINI_APP_URL, flush=True)
         return
-    _bot_api("setWebhook", {"url": url, "allowed_updates": json.dumps(["message"])}, timeout=10)
+    result = _bot_api(
+        "setWebhook",
+        {"url": url, "allowed_updates": json.dumps(["message"])},
+        timeout=10,
+    )
+    print("setWebhook", url, result, flush=True)
 
 
 def delete_telegram_webhook() -> None:

@@ -90,37 +90,38 @@
 
   document.querySelectorAll("[data-share]").forEach(function (btn) {
     btn.addEventListener("click", function () {
-      var url = btn.getAttribute("data-share-url") || "";
-      var text = btn.getAttribute("data-share-text") || "";
-      var photo = btn.getAttribute("data-share-photo") || "";
-      function fallback() {
-        var share = "https://t.me/share/url?url=" + encodeURIComponent(url) + "&text=" + encodeURIComponent(text);
-        try {
-          if (tg && tg.openTelegramLink) tg.openTelegramLink(share);
-          else window.open(share, "_blank");
-        } catch (err) {
-          location.href = share;
-        }
-      }
-      if (!navigator.share) {
-        fallback();
-        return;
-      }
-      var payload = { title: "Каталог двора", text: text, url: url };
-      if (photo && navigator.canShare) {
-        fetch(photo)
-          .then(function (r) { return r.blob(); })
-          .then(function (blob) {
-            var file = new File([blob], "photo.jpg", { type: blob.type || "image/jpeg" });
-            if (navigator.canShare({ files: [file] })) {
-              return navigator.share({ title: payload.title, text: text, files: [file] });
-            }
-            return navigator.share(payload);
-          })
-          .catch(function () { fallback(); });
-        return;
-      }
-      navigator.share(payload).catch(function () { fallback(); });
+      var fd = new FormData();
+      fd.append("kind", btn.getAttribute("data-share-kind") || "");
+      fd.append("pk", btn.getAttribute("data-share-pk") || "");
+      if (tg && tg.initData) fd.append("_tg_init", tg.initData);
+      btn.disabled = true;
+      fetch("/share/", { method: "POST", body: fd, credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          btn.disabled = false;
+          if (!data.ok) {
+            if (tg && tg.showAlert) tg.showAlert("Не удалось поделиться. Откройте каталог из бота.");
+            else alert("Не удалось поделиться");
+            return;
+          }
+          var chat = data.bot ? ("https://t.me/" + data.bot) : "";
+          if (tg && tg.showPopup) {
+            tg.showPopup(
+              { message: "Карточка отправлена вам в чат с ботом. Перешлите её кому нужно." },
+              function () {
+                if (chat && tg.openTelegramLink) tg.openTelegramLink(chat);
+              }
+            );
+          } else if (chat && tg && tg.openTelegramLink) {
+            tg.openTelegramLink(chat);
+          } else if (chat) {
+            window.open(chat, "_blank");
+          }
+        })
+        .catch(function () {
+          btn.disabled = false;
+          if (tg && tg.showAlert) tg.showAlert("Не удалось поделиться");
+        });
     });
   });
 

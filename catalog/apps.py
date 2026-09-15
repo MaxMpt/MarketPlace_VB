@@ -1,5 +1,7 @@
 from django.apps import AppConfig
 from django.db.backends.signals import connection_created
+import os
+import sys
 
 
 def _sqlite_wal(sender, connection, **kwargs):
@@ -18,3 +20,11 @@ class CatalogConfig(AppConfig):
 
     def ready(self):
         connection_created.connect(_sqlite_wal)
+        skip = {"migrate", "makemigrations", "collectstatic", "seed", "check"}
+        if skip.intersection(sys.argv):
+            return
+        if os.environ.get("RUN_MAIN") == "false":
+            return
+        from .notify import set_telegram_webhook
+
+        set_telegram_webhook()

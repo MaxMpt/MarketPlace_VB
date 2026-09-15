@@ -8,9 +8,8 @@
   {% if share %}
   <button type="button" class="btn-share {% if not contact_url %}wide{% endif %}" aria-label="Поделиться"
     data-share
-    data-share-url="{{ share.deep }}"
-    data-share-text="{{ share.text|escapejs }}"
-    data-share-photo="{{ share.photo }}">
+    data-share-kind="{{ share.kind }}"
+    data-share-pk="{{ share.pk }}">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
   </button>
   {% endif %}

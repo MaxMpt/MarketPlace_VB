@@ -97,6 +97,7 @@ def telegram_app_link(start_param: str = "") -> str:
 
 
 def listing_share(kind: str, item) -> dict:
+    from html import escape
     from django.conf import settings
 
     param = f"{'s' if kind == 'service' else 'c'}{item.pk}"
@@ -107,27 +108,32 @@ def listing_share(kind: str, item) -> dict:
         rating_line = f"{str(rating).replace('.', ',')} · {count} оценок"
     else:
         rating_line = "пока нет оценок"
-    parts = [item.name]
     meta = []
     if kind == "service" and getattr(item, "category", None):
         meta.append(item.category.title)
     meta.append(rating_line)
-    parts.append(" · ".join(meta))
+    price = ""
     if kind == "service":
-        price = item.price_label() if callable(getattr(item, "price_label", None)) else getattr(item, "price_label", "")
-        if price:
-            parts.append(str(price))
-    if item.description:
-        parts.append("")
-        parts.append(item.description.strip())
-    parts.append("")
-    parts.append(deep)
-    text = "\n".join(parts)
+        raw = item.price_label() if callable(getattr(item, "price_label", None)) else getattr(item, "price_label", "")
+        price = str(raw or "")
+    desc = (item.description or "").strip()
+    html = [f"<b>{escape(item.name)}</b>", escape(" · ".join(meta))]
+    if price:
+        html.append(f"<b>{escape(price)}</b>")
+    if desc:
+        html.append("")
+        html.append(escape(desc[:800]))
+    caption = "\n".join(html)
     photo = item.cover() or ""
     if photo.startswith("/"):
         photo = settings.MINI_APP_URL.rstrip("/") + photo
-    share = f"https://t.me/share/url?url={quote(deep, safe='')}&text={quote(text)}"
-    return {"url": share, "deep": deep, "text": text, "photo": photo}
+    return {
+        "deep": deep,
+        "caption": caption,
+        "photo": photo,
+        "kind": kind,
+        "pk": item.pk,
+    }
 
 
 def telegram_contact_url(username: str, text: str) -> str:
