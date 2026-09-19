@@ -20,14 +20,18 @@
   }
   var startParam = tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param;
   if (startParam) {
-    var go = "";
-    var sm = String(startParam).match(/^s(\d+)$/);
-    var cm = String(startParam).match(/^c(\d+)$/);
-    if (sm) go = "/services/" + sm[1] + "/";
-    if (cm) go = "/companies/" + cm[1] + "/";
-    if (go && location.pathname !== go) {
-      location.replace(go);
-      return;
+    var applied = sessionStorage.getItem("tg_start");
+    if (applied !== String(startParam)) {
+      sessionStorage.setItem("tg_start", String(startParam));
+      var go = "";
+      var sm = String(startParam).match(/^s(\d+)$/);
+      var cm = String(startParam).match(/^c(\d+)$/);
+      if (sm) go = "/services/" + sm[1] + "/";
+      if (cm) go = "/companies/" + cm[1] + "/";
+      if (go && location.pathname !== go) {
+        location.replace(go);
+        return;
+      }
     }
   }
   function injectInit(form) {
@@ -195,6 +199,7 @@
     cats.querySelectorAll("a").forEach(function (a) {
       a.addEventListener("click", function (e) {
         e.preventDefault();
+        if (tg && tg.HapticFeedback && tg.HapticFeedback.impactOccurred) tg.HapticFeedback.impactOccurred("light");
         cats.querySelectorAll("a").forEach(function (x) { x.classList.toggle("chip-on", x === a); });
         fetch(a.href, { headers: { "X-Requested-With": "XMLHttpRequest" } })
           .then(function (r) { return r.text(); })
@@ -243,6 +248,24 @@
     box.appendChild(full);
     box.addEventListener("click", function () { box.remove(); });
     document.body.appendChild(box);
+  });
+
+  document.querySelectorAll(".app-nav a").forEach(function (a) {
+    a.addEventListener("click", function () {
+      if (tg && tg.HapticFeedback && tg.HapticFeedback.selectionChanged) tg.HapticFeedback.selectionChanged();
+    });
+  });
+
+  document.querySelectorAll("form.review-form").forEach(function (form) {
+    var btn = form.querySelector("[data-review-submit]");
+    function sync() {
+      var rated = !!form.querySelector("input[name=rating]:checked");
+      var text = ((form.querySelector("textarea[name=text]") || {}).value || "").trim();
+      if (btn) btn.hidden = !(rated || text);
+    }
+    form.addEventListener("input", sync);
+    form.addEventListener("change", sync);
+    sync();
   });
 
   document.querySelectorAll("[data-fold]").forEach(function (btn) {

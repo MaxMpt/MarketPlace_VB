@@ -27,6 +27,15 @@
 
   {% if kind == "company" %}
   <div>
+    <p class="label">Категория</p>
+    <div class="chips wrap">
+      {% for c in company_categories %}
+        <label class="chip-opt">
+          <input type="radio" name="company_category_id" value="{{ c.pk }}" {% if item.category_id == c.pk %}checked{% endif %}>
+          {{ c.title }}
+        </label>
+      {% endfor %}
+    </div>
     <label class="label" for="address">Адрес</label>
     <div class="addr-wrap">
       <input id="address" name="address" maxlength="255" value="{{ item.address }}" placeholder="Начните вводить адрес" autocomplete="off">

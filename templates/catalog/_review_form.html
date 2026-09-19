@@ -1,0 +1,19 @@
+<form class="review-form" method="post" action="{% url 'add_review' %}" enctype="multipart/form-data">
+  {% csrf_token %}
+  {% if service %}<input type="hidden" name="service_id" value="{{ service.pk }}">{% endif %}
+  {% if company %}<input type="hidden" name="company_id" value="{{ company.pk }}">{% endif %}
+  <p class="label">{% if my_review %}Ваша оценка — можно изменить{% else %}Ваша оценка{% endif %}</p>
+  <div class="rate">
+    {% for n in "12345"|make_list %}
+      <label><input type="radio" name="rating" value="{{ forloop.counter }}" {% if my_review and forloop.counter == my_review.rating %}checked{% endif %}> ★</label>
+    {% endfor %}
+  </div>
+  <p class="muted tiny">Подпись из Telegram: {{ resident.display_name }}</p>
+  <textarea name="text" rows="3" maxlength="800" placeholder="Коротко, по делу">{{ my_review.review_text }}</textarea>
+  <div class="photo-field">
+    <p class="label">Фото</p>
+    <p class="muted tiny">До 3 снимков, по желанию</p>
+    <input type="file" name="photos" accept="image/*" multiple>
+  </div>
+  <button class="btn" type="submit" data-review-submit hidden>{% if my_review %}Сохранить оценку{% else %}Опубликовать{% endif %}</button>
+</form>
