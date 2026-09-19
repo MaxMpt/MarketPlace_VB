@@ -160,14 +160,22 @@ def save_user_reaction(payload: dict) -> None:
 REFRESH = timedelta(hours=2)
 
 
-def today_highlight():
+def today_highlight(force=False):
     gid = group_id()
     if not gid:
         return None
     today = timezone.localdate()
     now = timezone.now()
     snap = HighlightSnapshot.objects.filter(day=today).select_related("post").first()
-    if snap and snap.post_id and snap.post and not snap.post.is_demo and snap.computed_at and now - snap.computed_at < REFRESH:
+    if (
+        not force
+        and snap
+        and snap.post_id
+        and snap.post
+        and not snap.post.is_demo
+        and snap.computed_at
+        and now - snap.computed_at < REFRESH
+    ):
         return snap.post
     qs = ChatPost.objects.filter(chat_id=gid, day=today, is_demo=False, reaction_count__gte=1)
     winner = qs.order_by("-reaction_count", "-message_id").first()
@@ -185,7 +193,7 @@ def drop_demo_highlights() -> int:
 
 def refresh_today_highlight():
     drop_demo_highlights()
-    return today_highlight()
+    return today_highlight(force=True)
 
 
 def _download_photo(pk: int, file_id: str) -> None:

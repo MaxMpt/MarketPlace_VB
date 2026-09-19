@@ -1,4 +1,5 @@
 from django.db.models import Prefetch
+from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404, redirect, render
@@ -22,7 +23,7 @@ from .models import (
     UserSettings,
 )
 from .notify import is_admin, login_of, notify_admins, send_share_card, send_telegram, stars_word
-from .highlight import save_group_message, save_reaction_count, save_user_reaction, today_highlight
+from .highlight import refresh_today_highlight, save_group_message, save_reaction_count, save_user_reaction, today_highlight
 from .utils import listing_share, parse_price_input, save_resized_image, telegram_contact_url
 
 
@@ -247,6 +248,7 @@ def profile(request):
     )
     reviews = RatingReview.objects.alive().filter(create_user=user).select_related("service", "company")
     prefs, _ = UserSettings.objects.get_or_create(user=user)
+    admin = is_admin(user)
     return render(
         request,
         "catalog/profile.html",
@@ -259,8 +261,28 @@ def profile(request):
             "title": "Профиль",
             "notify_reviews": prefs.notify_reviews,
             "support_url": "https://t.me/ima_ecosystem?direct",
+            "highlight": today_highlight() if admin else None,
         },
     )
+
+
+@require_POST
+def refresh_highlight(request):
+    if not is_admin(request.resident):
+        return redirect("profile")
+    winner = refresh_today_highlight()
+    if winner:
+        text = winner.snippet or "сообщение из группы"
+        messages.success(
+            request,
+            f"На главной: «{text}» · ❤ {winner.reaction_count}",
+        )
+    else:
+        messages.info(
+            request,
+            "За сегодня нет сообщений с реакциями. Поставьте реакцию в группе — блок появится на главной.",
+        )
+    return redirect("profile")
 
 
 @require_POST

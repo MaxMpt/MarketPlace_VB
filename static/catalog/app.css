@@ -371,9 +371,16 @@ html.dark .today-card {
 .photo-btn input { display: none; }
 .photo-tools button:disabled { opacity: .35; }
 .review { display: block; background: var(--bg); border-radius: .75rem; padding: .75rem; }
-.review-own { display: flex; flex-direction: column; gap: .45rem; position: relative; }
-.review-own .review { margin: 0; }
-.review-own .card-del { position: static; align-self: flex-start; }
+.review-own { position: relative; }
+.review-own .review { margin: 0; padding-right: 5.4rem; }
+.review-own .card-del {
+  position: absolute;
+  top: 50%;
+  right: .65rem;
+  transform: translateY(-50%);
+  z-index: 2;
+  margin: 0;
+}
 .review-gone { opacity: .65; pointer-events: none; }
 .review-head { display: flex; justify-content: space-between; gap: .5rem; font-size: 14px; font-weight: 500; }
 .review p { margin: .4rem 0 0; font-size: 14px; line-height: 1.45; }
@@ -728,3 +735,6 @@ button, .btn, .btn-contact, .btn-share, .btn-sold, .app-nav a {
   background: rgba(229, 57, 53, .14);
   color: #e53935;
 }
+.hl-preview { margin: .75rem 0 0; }
+.hl-refresh { margin-top: .75rem; }
+.hl-status { margin: .6rem 0 0; font-size: 13px; line-height: 1.4; color: var(--muted); }

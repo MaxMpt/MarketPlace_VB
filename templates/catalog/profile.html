@@ -15,7 +15,28 @@
 </div>
 <div class="pad"><a class="btn" href="{% url 'add' %}">+ Новая карточка</a></div>
 {% if is_admin %}
-<div class="pad" style="padding-top:0"><a class="btn-support" href="{% url 'manage_categories' %}">Категории</a></div>
+<section class="section">
+  <h3>Админу</h3>
+  <a class="btn-support" href="{% url 'manage_categories' %}">Категории</a>
+  {% if highlight %}
+  <a class="today-card hl-preview" href="{{ highlight.message_url }}" data-tg-link>
+    <div class="today-top">
+      <p class="today-label">Актуально сегодня</p>
+      {% if highlight.reaction_count %}<span class="today-react">❤ {{ highlight.reaction_count }}</span>{% endif %}
+    </div>
+    {% if highlight.snippet %}<p class="today-text">{{ highlight.snippet }}</p>{% endif %}
+  </a>
+  {% endif %}
+  <form method="post" action="{% url 'refresh_highlight' %}" class="hl-refresh">
+    {% csrf_token %}
+    <button type="submit" class="btn">Получить актуальное сообщение</button>
+  </form>
+  {% if messages %}
+    {% for message in messages %}
+      <p class="hl-status">{{ message }}</p>
+    {% endfor %}
+  {% endif %}
+</section>
 {% endif %}
 
 <section class="section">

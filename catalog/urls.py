@@ -24,6 +24,7 @@ urlpatterns = [
     path("profile/", views.profile, name="profile"),
     path("profile/theme/", views.toggle_theme, name="toggle_theme"),
     path("profile/notify/", views.toggle_notify, name="toggle_notify"),
+    path("profile/highlight/", views.refresh_highlight, name="refresh_highlight"),
     path("profile/delete/", views.delete_listing, name="delete_listing"),
     path("reviews/delete/", views.delete_review, name="delete_review"),
     path("photos/replace/", views.replace_photo, name="replace_photo"),
