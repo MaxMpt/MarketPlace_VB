@@ -1,27 +1,22 @@
-
 from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
+import time
 
-from catalog.bot import build_app
-from catalog.notify import delete_telegram_webhook
+from catalog.notify import set_telegram_webhook
 
 
 class Command(BaseCommand):
-    help = "Запускает Telegram-бота: /start открывает Mini App"
+    help = "Держит webhook бота: /start и реакции группы"
 
     def handle(self, *args, **options):
         if not settings.TELEGRAM_BOT_TOKEN:
             raise CommandError(
                 "Задайте TELEGRAM_BOT_TOKEN в файле .env (токен от @BotFather)."
             )
-        if settings.MINI_APP_URL.startswith("http://"):
-            self.stdout.write(
-                self.style.WARNING(
-                    "Telegram открывает Mini App только по HTTPS.\n"
-                    "Для локальной проверки поднимите ngrok и пропишите MINI_APP_URL в .env."
-                )
-            )
+        set_telegram_webhook()
         self.stdout.write(f"Mini App: {settings.MINI_APP_URL}")
-        self.stdout.write("Бот запущен. В Telegram отправьте /start")
-        delete_telegram_webhook()
-        build_app().run_polling(allowed_updates=["message"])
+        self.stdout.write(f"Группа: {settings.TELEGRAM_GROUP_ID}")
+        self.stdout.write("Слушаю чат через webhook. Polling выключен, чтобы не перебить вебхук.")
+        while True:
+            time.sleep(3600)
+            set_telegram_webhook()

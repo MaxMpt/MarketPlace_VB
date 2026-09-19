@@ -6,32 +6,45 @@
   <div class="hero-overlay"></div>
   <div class="hero-text">
     <p class="eyebrow">Восточное Бутово 2</p>
-    <h2>Каталог двора</h2>
-    <p>Услуги жителей и компании рядом с домом. Отзывы соседей — без ленты сообщений.</p>
+    <h2 class="brand">МАРКЕТПЛЕЙС</h2>
+    <p>Услуги жителей, рекомендации рядом с домом и барахолка двора.</p>
   </div>
 </div>
 
-<div class="shortcuts">
+{% if highlight %}
+<a class="today-card" href="{{ highlight.message_url }}" data-tg-link>
+  <div class="today-top">
+    <p class="today-label">Актуально сегодня</p>
+    {% if highlight.reaction_count %}
+      <span class="today-react">❤ {{ highlight.reaction_count }}</span>
+    {% endif %}
+  </div>
+  {% if highlight.snippet %}<p class="today-text">{{ highlight.snippet }}</p>{% endif %}
+</a>
+{% endif %}
+
+<div class="shortcuts shortcuts-3">
   <a href="{% url 'services' %}">
     <span class="tile-icon">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
     </span>
     <strong>Услуги</strong>
-    <small>{{ service_count }} объявлений</small>
+    <small>{{ service_count }}</small>
   </a>
   <a href="{% url 'companies' %}">
     <span class="tile-icon">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg>
     </span>
-    <strong>Компании</strong>
-    <small>{{ company_count }} рядом</small>
+    <strong>Рекоменд.</strong>
+    <small>{{ company_count }}</small>
   </a>
-</div>
-
-<div class="chips">
-  {% for c in categories %}
-    <a href="{% url 'services' %}?cat={{ c.slug }}">{{ c.title }}</a>
-  {% endfor %}
+  <a href="{% url 'market' %}">
+    <span class="tile-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h12l1 7H5L6 2z"/><path d="M5 9v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><path d="M9 13h6"/></svg>
+    </span>
+    <strong>Барахолка</strong>
+    <small>{{ market_count }}</small>
+  </a>
 </div>
 
 <section class="section">
@@ -53,7 +66,7 @@
 
 <section class="section">
   <div class="section-head">
-    <h3>Компании у дома</h3>
+    <h3>Рекомендации у дома</h3>
     <a href="{% url 'companies' %}">Все ›</a>
   </div>
   <div class="stack">

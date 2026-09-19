@@ -26,8 +26,10 @@
       var go = "";
       var sm = String(startParam).match(/^s(\d+)$/);
       var cm = String(startParam).match(/^c(\d+)$/);
+      var mm = String(startParam).match(/^m(\d+)$/);
       if (sm) go = "/services/" + sm[1] + "/";
       if (cm) go = "/companies/" + cm[1] + "/";
+      if (mm) go = "/market/" + mm[1] + "/";
       if (go && location.pathname !== go) {
         location.replace(go);
         return;
@@ -93,38 +95,39 @@
   }
 
   document.querySelectorAll("[data-share]").forEach(function (btn) {
-    btn.addEventListener("click", function () {
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (btn.dataset.busy) return;
+      btn.dataset.busy = "1";
       var fd = new FormData();
       fd.append("kind", btn.getAttribute("data-share-kind") || "");
       fd.append("pk", btn.getAttribute("data-share-pk") || "");
+      var csrf = document.querySelector("[name=csrfmiddlewaretoken]");
+      if (csrf) fd.append("csrfmiddlewaretoken", csrf.value);
       if (tg && tg.initData) fd.append("_tg_init", tg.initData);
-      btn.disabled = true;
       fetch("/share/", { method: "POST", body: fd, credentials: "same-origin" })
-        .then(function (r) { return r.json(); })
+        .then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
         .then(function (data) {
-          btn.disabled = false;
+          btn.dataset.busy = "";
           if (!data.ok) {
-            if (tg && tg.showAlert) tg.showAlert("Не удалось поделиться. Откройте каталог из бота.");
-            else alert("Не удалось поделиться");
+            var fail = "Не удалось поделиться. Откройте мини-приложение из бота.";
+            if (tg && tg.showAlert) tg.showAlert(fail);
+            else alert(fail);
             return;
           }
           var chat = data.bot ? ("https://t.me/" + data.bot) : "";
-          if (tg && tg.showPopup) {
-            tg.showPopup(
-              { message: "Карточка отправлена вам в чат с ботом. Перешлите её кому нужно." },
-              function () {
-                if (chat && tg.openTelegramLink) tg.openTelegramLink(chat);
-              }
-            );
-          } else if (chat && tg && tg.openTelegramLink) {
-            tg.openTelegramLink(chat);
-          } else if (chat) {
-            window.open(chat, "_blank");
+          var okMsg = "Карточка отправлена вам в чат с ботом. Перешлите её кому нужно.";
+          if (tg && tg.showAlert) tg.showAlert(okMsg);
+          else alert(okMsg);
+          if (chat && tg && tg.openTelegramLink) {
+            setTimeout(function () { tg.openTelegramLink(chat); }, 250);
           }
         })
         .catch(function () {
-          btn.disabled = false;
+          btn.dataset.busy = "";
           if (tg && tg.showAlert) tg.showAlert("Не удалось поделиться");
+          else alert("Не удалось поделиться");
         });
     });
   });
@@ -172,18 +175,34 @@
     });
   });
 
+  function askConfirm(msg, cb) {
+    var wrap = document.createElement("div");
+    wrap.className = "confirm-mask";
+    wrap.innerHTML = '<div class="confirm-box"><p></p><div class="confirm-actions"><button type="button" data-no>Отмена</button><button type="button" data-yes>Да</button></div></div>';
+    wrap.querySelector("p").textContent = msg;
+    function done(ok) {
+      wrap.remove();
+      cb(!!ok);
+    }
+    wrap.querySelector("[data-yes]").addEventListener("click", function () { done(true); });
+    wrap.querySelector("[data-no]").addEventListener("click", function () { done(false); });
+    wrap.addEventListener("click", function (e) {
+      if (e.target === wrap) done(false);
+    });
+    document.body.appendChild(wrap);
+  }
+
   document.querySelectorAll("form[data-confirm]").forEach(function (form) {
     form.addEventListener("submit", function (e) {
       if (form.dataset.confirmed) return;
       e.preventDefault();
-      var msg = form.getAttribute("data-confirm");
-      var go = function (ok) {
+      e.stopPropagation();
+      askConfirm(form.getAttribute("data-confirm") || "Продолжить?", function (ok) {
         if (!ok) return;
         form.dataset.confirmed = "1";
-        form.submit();
-      };
-      if (tg && tg.showConfirm) tg.showConfirm(msg, go);
-      else go(window.confirm(msg));
+        if (typeof form.requestSubmit === "function") form.requestSubmit();
+        else form.submit();
+      });
     });
   });
 

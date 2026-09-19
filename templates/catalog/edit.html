@@ -22,6 +22,22 @@
   </div>
   {% endif %}
 
+  {% if kind == "market" %}
+  <div>
+    <p class="label">Категория</p>
+    <div class="chips wrap">
+      {% for c in market_categories %}
+        <label class="chip-opt">
+          <input type="radio" name="market_category_id" value="{{ c.pk }}" {% if item.category_id == c.pk %}checked{% endif %}>
+          {{ c.title }}
+        </label>
+      {% endfor %}
+    </div>
+    <label class="label" for="price">Цена</label>
+    <input id="price" name="price_note" maxlength="40" placeholder="3200 или Договорная" value="{{ price_value }}">
+  </div>
+  {% endif %}
+
   <label class="label" for="desc">Описание</label>
   <textarea id="desc" name="description" rows="4" maxlength="600">{{ item.description }}</textarea>
 
@@ -41,14 +57,10 @@
       <input id="address" name="address" maxlength="255" value="{{ item.address }}" placeholder="Начните вводить адрес" autocomplete="off">
       <ul id="addr-suggest" class="suggest" hidden></ul>
     </div>
-    <p class="label">Открывать маршрут</p>
-    <div class="seg">
-      <label class="{% if item.map_provider != 'google' %}on{% endif %}"><input type="radio" name="map_provider" value="yandex" {% if item.map_provider != 'google' %}checked{% endif %}> Яндекс</label>
-      <label class="{% if item.map_provider == 'google' %}on{% endif %}"><input type="radio" name="map_provider" value="google" {% if item.map_provider == 'google' %}checked{% endif %}> Google</label>
-    </div>
     <iframe id="pick-frame" class="map-picker" title="Карта" src="{{ item.embed_url|default:'https://yandex.ru/map-widget/v1/?ll=37.5433,55.5477&z=15' }}" loading="lazy"></iframe>
     <input type="hidden" name="lat" id="lat" value="{{ item.lat|default_if_none:'' }}">
     <input type="hidden" name="lng" id="lng" value="{{ item.lng|default_if_none:'' }}">
+    <input type="hidden" name="map_provider" value="yandex">
   </div>
   {% endif %}
 
@@ -108,21 +120,13 @@
   const latInput = document.getElementById('lat');
   const lngInput = document.getElementById('lng');
   let timer;
-  function provider() {
-    return document.querySelector('input[name=map_provider]:checked')?.value || 'yandex';
-  }
   function updateMap() {
     const lat = latInput.value;
     const lng = lngInput.value;
     const q = encodeURIComponent(address.value || '');
     if (!frame) return;
-    if (provider() === 'google') {
-      if (lat && lng) frame.src = `https://maps.google.com/maps?q=${lat},${lng}&hl=ru&z=16&output=embed`;
-      else if (address.value) frame.src = `https://maps.google.com/maps?q=${q}&hl=ru&z=16&output=embed`;
-    } else {
-      if (lat && lng) frame.src = `https://yandex.ru/map-widget/v1/?ll=${lng},${lat}&pt=${lng},${lat}&z=16&l=map`;
-      else if (address.value) frame.src = `https://yandex.ru/map-widget/v1/?text=${q}&z=16`;
-    }
+    if (lat && lng) frame.src = `https://yandex.ru/map-widget/v1/?ll=${lng},${lat}&pt=${lng},${lat}&z=16&l=map`;
+    else if (address.value) frame.src = `https://yandex.ru/map-widget/v1/?text=${q}&z=16`;
   }
   function hideSuggest() { suggest.hidden = true; suggest.innerHTML = ''; }
   const suggestUrl = "{% url 'geo_suggest' %}";
@@ -152,10 +156,6 @@
       }, 280);
     });
   }
-  document.querySelectorAll('input[name=map_provider]').forEach((el) => el.addEventListener('change', function () {
-    document.querySelectorAll('input[name=map_provider]').forEach((r) => r.parentElement.classList.toggle('on', r.checked));
-    updateMap();
-  }));
 </script>
 {% endif %}
 {% endblock %}

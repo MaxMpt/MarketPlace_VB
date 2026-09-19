@@ -32,15 +32,15 @@ def send_telegram(chat_id, text: str) -> None:
 def send_start_card(chat_id) -> None:
     url = settings.MINI_APP_URL
     markup = json.dumps(
-        {"inline_keyboard": [[{"text": "Открыть каталог", "web_app": {"url": url}}]]}
+        {"inline_keyboard": [[{"text": "Открыть МАРКЕТПЛЕЙС", "web_app": {"url": url}}]]}
     )
     result = _bot_api(
         "sendMessage",
         {
             "chat_id": int(chat_id),
             "text": (
-                "Добро пожаловать в каталог двора Восточное Бутово 2.\n\n"
-                "Услуги соседей и компании рядом с домом. "
+                "Добро пожаловать в МАРКЕТПЛЕЙС Восточное Бутово 2.\n\n"
+                "Услуги соседей, рекомендации рядом с домом и барахолка. "
                 "Отзывы без ленты сообщений.\n\n"
                 "Нажмите кнопку, чтобы открыть приложение."
             ),
@@ -89,7 +89,17 @@ def set_telegram_webhook() -> None:
         return
     result = _bot_api(
         "setWebhook",
-        {"url": url, "allowed_updates": json.dumps(["message"])},
+        {
+            "url": url,
+            "allowed_updates": json.dumps(
+                [
+                    "message",
+                    "edited_message",
+                    "message_reaction",
+                    "message_reaction_count",
+                ]
+            ),
+        },
         timeout=10,
     )
     print("setWebhook", url, result, flush=True)

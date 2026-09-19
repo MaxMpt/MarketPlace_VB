@@ -6,12 +6,14 @@
   <div class="card-body">
     <p class="card-title">{{ name }}</p>
     {% if subtitle %}<p class="card-sub">{{ subtitle }}</p>{% endif %}
+    {% if not hide_rating %}
     <div class="card-meta">
       {% stars rating %}
       <span>
         {% if count %}{{ rating|ru_rating }} · {{ count }}{% else %}пока нет оценок{% endif %}
       </span>
     </div>
+    {% endif %}
     {% if price %}<p class="card-price">{{ price }}</p>{% endif %}
   </div>
 </a>

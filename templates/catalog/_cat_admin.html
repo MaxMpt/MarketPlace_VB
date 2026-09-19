@@ -1,0 +1,31 @@
+
+<div class="stack">
+  {% for c in cats %}
+  <div class="cat-row">
+    <form method="post" class="cat-rename">
+      {% csrf_token %}
+      <input type="hidden" name="kind" value="{{ kind }}">
+      <input type="hidden" name="action" value="rename">
+      <input type="hidden" name="pk" value="{{ c.pk }}">
+      <input name="title" value="{{ c.title }}" maxlength="64" required>
+      <button type="submit" class="photo-btn">Ок</button>
+    </form>
+    <form method="post" data-confirm="Скрыть категорию «{{ c.title }}»?">
+      {% csrf_token %}
+      <input type="hidden" name="kind" value="{{ kind }}">
+      <input type="hidden" name="action" value="delete">
+      <input type="hidden" name="pk" value="{{ c.pk }}">
+      <button type="submit" class="photo-btn danger">Удалить</button>
+    </form>
+  </div>
+  {% empty %}
+  <p class="empty">Категорий нет.</p>
+  {% endfor %}
+  <form method="post" class="cat-add">
+    {% csrf_token %}
+    <input type="hidden" name="kind" value="{{ kind }}">
+    <input type="hidden" name="action" value="add">
+    <input name="title" maxlength="64" required placeholder="Новая категория">
+    <button class="btn" type="submit">Добавить</button>
+  </form>
+</div>

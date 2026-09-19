@@ -28,6 +28,7 @@ MINI_APP_URL = os.environ.get("MINI_APP_URL", "http://127.0.0.1:8000/")
 if not MINI_APP_URL.endswith("/"):
     MINI_APP_URL += "/"
 ADMIN_IDS = [int(x) for x in os.environ.get("ADMIN_IDS", "").replace(";", ",").split(",") if x.strip().isdigit()]
+TELEGRAM_GROUP_ID = int(os.environ.get("TELEGRAM_GROUP_ID", "-1003904078904") or 0)
 
 CSRF_TRUSTED_ORIGINS = [
     "https://*.grok.com",

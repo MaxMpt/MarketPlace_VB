@@ -1,6 +1,12 @@
+from datetime import timedelta
+
 from django.db import models
 from django.db.models import Avg, Count, Q
 from django.templatetags.static import static
+from django.utils import timezone
+
+
+MARKET_LIFE_DAYS = 60
 
 
 class AliveQuerySet(models.QuerySet):
@@ -192,6 +198,68 @@ class Service(models.Model):
         return self.name
 
 
+class MarketCategory(models.Model):
+    slug = models.SlugField(max_length=32)
+    title = models.CharField(max_length=64)
+    sort_order = models.SmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    objects = AliveQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+
+    def __str__(self):
+        return self.title
+
+
+class MarketQuerySet(AliveQuerySet):
+    def alive(self):
+        cutoff = timezone.now() - timedelta(days=MARKET_LIFE_DAYS)
+        return super().alive().filter(created_at__gte=cutoff)
+
+
+class MarketItem(models.Model):
+    category = models.ForeignKey(MarketCategory, on_delete=models.PROTECT, related_name="items")
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default="")
+    price_cents = models.IntegerField(null=True, blank=True)
+    price_note = models.CharField(max_length=64, blank=True, default="")
+    create_user = models.ForeignKey(
+        Resident, null=True, blank=True, on_delete=models.SET_NULL, related_name="market_items"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    objects = MarketQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-id"]
+
+    def cover(self):
+        photo = self.photos.alive().order_by("sort_order", "id").first()
+        return photo.src if photo else ""
+
+    def price_label(self):
+        if self.price_note:
+            return self.price_note
+        if self.price_cents is None:
+            return "договорная"
+        rub = round(self.price_cents / 100)
+        return f"{rub:,}".replace(",", " ") + " ₽"
+
+    @property
+    def expires_at(self):
+        if not self.created_at:
+            return timezone.now() + timedelta(days=MARKET_LIFE_DAYS)
+        return self.created_at + timedelta(days=MARKET_LIFE_DAYS)
+
+    def __str__(self):
+        return self.name
+
+
 class RatingReview(models.Model):
     company = models.ForeignKey(
         Company, null=True, blank=True, on_delete=models.CASCADE, related_name="reviews"
@@ -262,6 +330,9 @@ class Photo(models.Model):
     company = models.ForeignKey(
         Company, null=True, blank=True, on_delete=models.CASCADE, related_name="photos"
     )
+    market = models.ForeignKey(
+        "MarketItem", null=True, blank=True, on_delete=models.CASCADE, related_name="photos"
+    )
     image = models.ImageField(upload_to="listings/%Y/%m/", blank=True, null=True)
     external_url = models.TextField(blank=True, default="")
     sort_order = models.SmallIntegerField(default=0)
@@ -282,3 +353,51 @@ class Photo(models.Model):
         if self.external_url:
             return static(self.external_url)
         return ""
+
+
+class ChatPost(models.Model):
+    chat_id = models.BigIntegerField()
+    message_id = models.IntegerField()
+    day = models.DateField(db_index=True)
+    author_name = models.CharField(max_length=255, blank=True, default="")
+    text = models.TextField(blank=True, default="")
+    photo = models.ImageField(upload_to="highlights/%Y/%m/", blank=True, null=True)
+    reaction_count = models.IntegerField(default=0)
+    message_url = models.CharField(max_length=255, blank=True, default="")
+    is_demo = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("chat_id", "message_id")
+        ordering = ["-reaction_count", "-message_id"]
+
+    @property
+    def photo_src(self):
+        return self.photo.url if self.photo else ""
+
+    @property
+    def snippet(self):
+        text = " ".join((self.text or "").split())
+        if len(text) <= 70:
+            return text
+        return text[:70].rstrip(" .,;:—-") + "..."
+
+    def __str__(self):
+        return f"{self.day} #{self.message_id} ({self.reaction_count})"
+
+
+class ChatReaction(models.Model):
+    chat_id = models.BigIntegerField()
+    message_id = models.IntegerField()
+    user_id = models.BigIntegerField()
+    emoji = models.CharField(max_length=64, default="")
+
+    class Meta:
+        unique_together = ("chat_id", "message_id", "user_id", "emoji")
+
+
+class HighlightSnapshot(models.Model):
+    day = models.DateField(unique=True)
+    post = models.ForeignKey(ChatPost, null=True, blank=True, on_delete=models.SET_NULL)
+    computed_at = models.DateTimeField()

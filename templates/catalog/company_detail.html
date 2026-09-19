@@ -27,7 +27,7 @@
   {% endif %}
   {% include "catalog/_contact.html" with author=company.create_user %}
   {% if is_admin %}
-    <form method="post" action="{% url 'delete_listing' %}" data-confirm="Вы уверены, что хотите удалить компанию?">
+    <form method="post" action="{% url 'delete_listing' %}" data-confirm="Вы уверены, что хотите удалить рекомендацию?">
       {% csrf_token %}
       <input type="hidden" name="kind" value="company">
       <input type="hidden" name="pk" value="{{ company.pk }}">
@@ -49,8 +49,8 @@
         {% with photo=r.photos.all.0 %}
           {% if photo %}<img class="review-photo" src="{{ photo.src }}" alt="" data-zoom>{% endif %}
         {% endwith %}
-        {% if is_admin %}
-          <form method="post" action="{% url 'delete_review' %}" data-confirm="Вы уверены, что хотите удалить комментарий?">
+        {% if is_admin or r.create_user_id == resident.id %}
+          <form method="post" action="{% url 'delete_review' %}" data-confirm="Вы уверены, что хотите удалить отзыв?">
             {% csrf_token %}
             <input type="hidden" name="pk" value="{{ r.pk }}">
             <button type="submit" class="btn-admin-del">Удалить отзыв</button>

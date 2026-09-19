@@ -3,20 +3,41 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_POST
 from urllib.parse import quote
+from datetime import timedelta
 import json
 
-from .models import Company, CompanyCategory, Photo, RatingReview, Service, ServiceCategory, UserSettings
+from .models import (
+    MARKET_LIFE_DAYS,
+    Company,
+    CompanyCategory,
+    MarketCategory,
+    MarketItem,
+    Photo,
+    RatingReview,
+    Service,
+    ServiceCategory,
+    UserSettings,
+)
 from .notify import is_admin, login_of, notify_admins, send_share_card, send_telegram, stars_word
-from .utils import listing_share, parse_price_input, save_resized_image, telegram_contact_url
+from .highlight import save_group_message, save_reaction_count, save_user_reaction, today_highlight
 
 
 def _photos():
     return Prefetch("photos", queryset=Photo.objects.alive().order_by("sort_order", "id"))
 
 
+def _expire_market():
+    cutoff = timezone.now() - timedelta(days=MARKET_LIFE_DAYS)
+    MarketItem.objects.filter(deleted_at__isnull=True, created_at__lt=cutoff).update(
+        deleted_at=timezone.now()
+    )
+
+
 def home(request):
+    _expire_market()
     services = (
         Service.objects.alive()
         .select_related("category", "create_user")
@@ -38,7 +59,9 @@ def home(request):
             "companies": companies,
             "service_count": Service.objects.alive().count(),
             "company_count": Company.objects.alive().count(),
-            "title": "ВБ2 Каталог",
+            "market_count": MarketItem.objects.alive().count(),
+            "highlight": today_highlight(),
+            "title": "МАРКЕТПЛЕЙС",
         },
     )
 
@@ -68,12 +91,17 @@ def _contact(request, author, title, kind):
     if kind == "service":
         text = (
             f"Здравствуйте! Обращаюсь по услуге «{title}» "
-            f"из каталога двора Восточное Бутово 2. Можно уточнить детали?"
+            f"из МАРКЕТПЛЕЙС Восточное Бутово 2. Можно уточнить детали?"
+        )
+    elif kind == "market":
+        text = (
+            f"Здравствуйте! Пишу по объявлению «{title}» "
+            f"из барахолки МАРКЕТПЛЕЙС. Ещё актуально?"
         )
     else:
         text = (
-            f"Здравствуйте! Обращаюсь по компании «{title}» "
-            f"из каталога двора Восточное Бутово 2. Подскажите, пожалуйста."
+            f"Здравствуйте! Обращаюсь по рекомендации «{title}» "
+            f"из МАРКЕТПЛЕЙС Восточное Бутово 2. Подскажите, пожалуйста."
         )
     return telegram_contact_url(author.username, text)
 
@@ -130,7 +158,7 @@ def companies_list(request):
             "categories": CompanyCategory.objects.alive(),
             "companies": qs,
             "active_cat": slug,
-            "title": "Компании района",
+            "title": "Рекомендации",
         },
     )
 
@@ -151,6 +179,7 @@ def company_detail(request, pk):
             "reviews": reviews,
             "my_review": my_review,
             "share": listing_share("company", company),
+            "contact_url": _contact(request, company.create_user, company.name, "company"),
             "is_admin": is_admin(request.resident),
             "title": company.name,
             "back": "/companies/",
@@ -158,7 +187,52 @@ def company_detail(request, pk):
     )
 
 
+def market_list(request):
+    _expire_market()
+    slug = request.GET.get("cat") or ""
+    qs = (
+        MarketItem.objects.alive()
+        .select_related("category", "create_user")
+        .prefetch_related(_photos())
+        .order_by("-id")
+    )
+    if slug:
+        qs = qs.filter(category__slug=slug)
+    return render(
+        request,
+        "catalog/market.html",
+        {
+            "categories": MarketCategory.objects.alive(),
+            "items": qs,
+            "active_cat": slug,
+            "title": "Барахолка",
+        },
+    )
+
+
+def market_detail(request, pk):
+    _expire_market()
+    item = get_object_or_404(
+        MarketItem.objects.alive().select_related("category", "create_user").prefetch_related(_photos()),
+        pk=pk,
+    )
+    return render(
+        request,
+        "catalog/market_detail.html",
+        {
+            "item": item,
+            "photos": item.photos.alive(),
+            "share": listing_share("market", item),
+            "contact_url": _contact(request, item.create_user, item.name, "market"),
+            "is_admin": is_admin(request.resident),
+            "title": item.name,
+            "back": "/market/",
+        },
+    )
+
+
 def profile(request):
+    _expire_market()
     user = request.resident
     listings = (
         Service.objects.alive()
@@ -167,6 +241,9 @@ def profile(request):
         .prefetch_related(_photos())
     )
     companies = Company.objects.alive().filter(create_user=user).select_related("category").prefetch_related(_photos())
+    market_items = (
+        MarketItem.objects.alive().filter(create_user=user).select_related("category").prefetch_related(_photos())
+    )
     reviews = RatingReview.objects.alive().filter(create_user=user).select_related("service", "company")
     prefs, _ = UserSettings.objects.get_or_create(user=user)
     return render(
@@ -175,8 +252,9 @@ def profile(request):
         {
             "listings": listings,
             "my_companies": companies,
+            "my_market": market_items,
             "reviews": reviews,
-            "listing_count": listings.count() + companies.count(),
+            "listing_count": listings.count() + companies.count() + market_items.count(),
             "title": "Профиль",
             "notify_reviews": prefs.notify_reviews,
             "support_url": "https://t.me/ima_ecosystem?direct",
@@ -228,7 +306,11 @@ def delete_listing(request):
     elif kind == "company":
         qs = Company.objects.alive()
         item = get_object_or_404(qs, pk=pk) if admin else get_object_or_404(qs, pk=pk, create_user=user)
-        label = f"компания «{item.name}»"
+        label = f"рекомендация «{item.name}»"
+    elif kind == "market":
+        qs = MarketItem.objects.alive()
+        item = get_object_or_404(qs, pk=pk) if admin else get_object_or_404(qs, pk=pk, create_user=user)
+        label = f"вещь «{item.name}»"
     else:
         return redirect("profile")
     item.deleted_at = timezone.now()
@@ -240,38 +322,49 @@ def delete_listing(request):
             f"Если это ошибка — напишите в поддержку: https://t.me/ima_ecosystem",
         )
     if admin and not (item.create_user_id == user.id):
-        nxt = request.POST.get("next") or ("/services/" if kind == "service" else "/companies/")
+        nxt = request.POST.get("next") or (
+            "/services/" if kind == "service" else "/market/" if kind == "market" else "/companies/"
+        )
         return redirect(nxt)
     return redirect("profile")
 
 
 @require_POST
 def delete_review(request):
-    if not is_admin(request.resident):
-        return redirect("home")
     review = get_object_or_404(RatingReview.objects.alive(), pk=request.POST.get("pk"))
+    user = request.resident
+    if not (is_admin(user) or review.create_user_id == user.id):
+        return redirect("home")
     review.deleted_at = timezone.now()
     review.save(update_fields=["deleted_at"])
     if review.service_id:
         review.service.recalc_rating()
+    elif review.company_id:
+        review.company.recalc_rating()
+    nxt = request.POST.get("next") or ""
+    if nxt.startswith("/") and "//" not in nxt:
+        return redirect(nxt)
+    if review.service_id:
         return redirect("service_detail", pk=review.service_id)
     if review.company_id:
-        review.company.recalc_rating()
         return redirect("company_detail", pk=review.company_id)
-    return redirect("home")
+    return redirect("profile")
 
 
 def _need_telegram(request):
     if getattr(request, "tg_real", False):
         return ""
-    return "Откройте каталог из Telegram-бота (/start) и создайте карточку ещё раз. Сейчас вы как гость."
+    return "Откройте МАРКЕТПЛЕЙС из Telegram-бота (/start) и создайте карточку ещё раз. Сейчас вы как гость."
 
 
 def add_listing(request):
     categories = list(ServiceCategory.objects.alive())
     company_categories = list(CompanyCategory.objects.alive())
+    market_categories = list(MarketCategory.objects.alive())
     error = ""
-    kind = request.POST.get("kind", "service")
+    kind = request.POST.get("kind") or request.GET.get("kind") or "service"
+    if kind not in {"service", "company", "market"}:
+        kind = "service"
     if request.method == "POST":
         blocked = _need_telegram(request)
         if blocked:
@@ -304,6 +397,28 @@ def add_listing(request):
                         f"Новая услуга «{service.name}» от {login_of(request.resident)}"
                     )
                     return redirect("service_detail", pk=service.pk)
+            elif kind == "market":
+                try:
+                    category = MarketCategory.objects.alive().get(
+                        pk=int(request.POST.get("market_category_id") or 0)
+                    )
+                except (MarketCategory.DoesNotExist, ValueError, TypeError):
+                    error = "Выберите категорию"
+                else:
+                    cents, note = parse_price_input(price_note)
+                    item = MarketItem.objects.create(
+                        category=category,
+                        name=name,
+                        description=description,
+                        price_cents=cents,
+                        price_note=note,
+                        create_user=request.resident,
+                    )
+                    _save_photos(files, market=item)
+                    notify_admins(
+                        f"Новая вещь в барахолке «{item.name}» от {login_of(request.resident)}"
+                    )
+                    return redirect("market_detail", pk=item.pk)
             else:
                 try:
                     company_cat = CompanyCategory.objects.alive().get(
@@ -313,9 +428,6 @@ def add_listing(request):
                     error = "Выберите категорию компании"
                 else:
                     lat, lng = _parse_point(request)
-                    provider = request.POST.get("map_provider") or "yandex"
-                    if provider not in {"yandex", "google"}:
-                        provider = "yandex"
                     company = Company.objects.create(
                         category=company_cat,
                         name=name,
@@ -324,11 +436,11 @@ def add_listing(request):
                         address=(request.POST.get("address") or "").strip()[:255],
                         lat=lat,
                         lng=lng,
-                        map_provider=provider,
+                        map_provider="yandex",
                     )
                     _save_photos(files, company=company)
                     notify_admins(
-                        f"Новая компания «{company.name}» от {login_of(request.resident)}"
+                        f"Новая рекомендация «{company.name}» от {login_of(request.resident)}"
                     )
                     return redirect("company_detail", pk=company.pk)
     return render(
@@ -337,8 +449,9 @@ def add_listing(request):
         {
             "categories": categories,
             "company_categories": company_categories,
+            "market_categories": market_categories,
             "title": "Новая карточка",
-            "back": "/",
+            "back": "/market/" if kind == "market" else "/companies/" if kind == "company" else "/services/",
             "error": error,
             "kind": kind,
         },
@@ -416,9 +529,6 @@ def edit_company(request, pk):
             error = "Название слишком короткое"
         else:
             lat, lng = _parse_point(request)
-            provider = request.POST.get("map_provider") or company.map_provider or "yandex"
-            if provider not in {"yandex", "google"}:
-                provider = "yandex"
             company.name = name
             company.description = description
             try:
@@ -431,7 +541,7 @@ def edit_company(request, pk):
             if lat and lng:
                 company.lat = lat
                 company.lng = lng
-            company.map_provider = provider
+            company.map_provider = "yandex"
             company.save()
             files = request.FILES.getlist("photos")[:6]
             if files:
@@ -446,8 +556,116 @@ def edit_company(request, pk):
             "company_categories": CompanyCategory.objects.alive(),
             "photos": company.photos.filter(deleted_at__isnull=True).order_by("sort_order", "id"),
             "error": error,
-            "title": "Изменить компанию",
+            "title": "Изменить рекомендацию",
             "back": f"/companies/{company.pk}/",
+        },
+    )
+
+
+def edit_market(request, pk):
+    item = get_object_or_404(MarketItem.objects.alive().select_related("category"), pk=pk)
+    if not _can_edit(request.resident, item):
+        return redirect("market_detail", pk=pk)
+    error = ""
+    if request.method == "POST":
+        name = (request.POST.get("name") or "").strip()
+        description = (request.POST.get("description") or "").strip()
+        if len(name) < 2:
+            error = "Название слишком короткое"
+        else:
+            try:
+                category = MarketCategory.objects.alive().get(
+                    pk=int(request.POST.get("market_category_id") or 0)
+                )
+            except (MarketCategory.DoesNotExist, ValueError, TypeError):
+                error = "Выберите категорию"
+            else:
+                cents, note = parse_price_input(request.POST.get("price_note") or "")
+                item.category = category
+                item.name = name
+                item.description = description
+                item.price_cents = cents
+                item.price_note = note
+                item.save()
+                files = request.FILES.getlist("photos")[:6]
+                if files:
+                    _save_photos(files, market=item)
+                return redirect("market_detail", pk=item.pk)
+    return render(
+        request,
+        "catalog/edit.html",
+        {
+            "kind": "market",
+            "item": item,
+            "market_categories": MarketCategory.objects.alive(),
+            "price_value": _price_field(item),
+            "photos": item.photos.filter(deleted_at__isnull=True).order_by("sort_order", "id"),
+            "error": error,
+            "title": "Изменить объявление",
+            "back": f"/market/{item.pk}/",
+        },
+    )
+
+
+def _cat_model(kind):
+    return {
+        "service": ServiceCategory,
+        "company": CompanyCategory,
+        "market": MarketCategory,
+    }.get(kind)
+
+
+def _unique_slug(model, title):
+    base = slugify(title, allow_unicode=True)[:28] or "cat"
+    slug = base
+    n = 2
+    while model.objects.filter(slug=slug).exists():
+        slug = f"{base}-{n}"[:32]
+        n += 1
+    return slug
+
+
+def manage_categories(request):
+    if not is_admin(request.resident):
+        return redirect("profile")
+    error = ""
+    if request.method == "POST":
+        kind = request.POST.get("kind")
+        model = _cat_model(kind)
+        action = request.POST.get("action")
+        if not model:
+            error = "Неизвестный тип"
+        elif action == "add":
+            title = (request.POST.get("title") or "").strip()[:64]
+            if len(title) < 2:
+                error = "Слишком короткое название"
+            else:
+                max_order = model.objects.alive().order_by("-sort_order").values_list("sort_order", flat=True).first() or 0
+                model.objects.create(title=title, slug=_unique_slug(model, title), sort_order=max_order + 10)
+        elif action == "rename":
+            item = get_object_or_404(model.objects.alive(), pk=request.POST.get("pk"))
+            title = (request.POST.get("title") or "").strip()[:64]
+            if len(title) < 2:
+                error = "Слишком короткое название"
+            else:
+                item.title = title
+                item.save(update_fields=["title"])
+        elif action == "delete":
+            item = get_object_or_404(model.objects.alive(), pk=request.POST.get("pk"))
+            item.deleted_at = timezone.now()
+            item.save(update_fields=["deleted_at"])
+        if not error and request.method == "POST":
+            return redirect("manage_categories")
+    return render(
+        request,
+        "catalog/manage_categories.html",
+        {
+            "service_cats": ServiceCategory.objects.alive(),
+            "company_cats": CompanyCategory.objects.alive(),
+            "market_cats": MarketCategory.objects.alive(),
+            "error": error,
+            "title": "Категории",
+            "back": "/profile/",
         },
     )
 
@@ -473,6 +691,8 @@ def reorder_photo(request):
         qs = Photo.objects.filter(service_id=photo.service_id, deleted_at__isnull=True)
     elif photo.company_id:
         qs = Photo.objects.filter(company_id=photo.company_id, deleted_at__isnull=True)
+    elif photo.market_id:
+        qs = Photo.objects.filter(market_id=photo.market_id, deleted_at__isnull=True)
     else:
         return redirect(nxt)
     photos = list(qs.order_by("sort_order", "id"))
@@ -499,6 +719,8 @@ def delete_photo(request):
         qs = Photo.objects.filter(service_id=photo.service_id, deleted_at__isnull=True)
     elif photo.company_id:
         qs = Photo.objects.filter(company_id=photo.company_id, deleted_at__isnull=True)
+    elif photo.market_id:
+        qs = Photo.objects.filter(market_id=photo.market_id, deleted_at__isnull=True)
     else:
         return redirect(nxt)
     for n, item in enumerate(qs.order_by("sort_order", "id")):
@@ -518,6 +740,9 @@ def _owned_photo(request):
     elif photo.company_id:
         owner_id = photo.company.create_user_id
         nxt = f"/companies/{photo.company_id}/edit/"
+    elif photo.market_id:
+        owner_id = photo.market.create_user_id
+        nxt = f"/market/{photo.market_id}/edit/"
     if owner_id != request.resident.id and not is_admin(request.resident):
         return None, "/"
     return photo, nxt
@@ -587,11 +812,11 @@ def _notify_review(owner, target, reviewer, rating, text):
     )
 
 
-def _save_photos(files, service=None, company=None, review=None):
+def _save_photos(files, service=None, company=None, review=None, market=None):
     for index, uploaded in enumerate(files):
         if not getattr(uploaded, "content_type", "").startswith("image/"):
             continue
-        photo = Photo(service=service, company=company, review=review, sort_order=index)
+        photo = Photo(service=service, company=company, review=review, market=market, sort_order=index)
         content = save_resized_image(uploaded, uploaded.name)
         photo.image.save(content.name, content, save=True)
 
@@ -669,14 +894,33 @@ def telegram_webhook(request):
         data = json.loads(request.body.decode() or "{}")
     except json.JSONDecodeError:
         return HttpResponse("ok")
-    msg = data.get("message") or {}
+    msg = data.get("message") or data.get("edited_message") or {}
     text = msg.get("text") or ""
-    chat_id = (msg.get("chat") or {}).get("id")
-    if chat_id and text.startswith("/start"):
+    chat = msg.get("chat") or {}
+    chat_id = chat.get("id")
+    chat_type = chat.get("type") or ""
+    if chat_id and chat_type == "private" and text.startswith("/start"):
         from .notify import send_start_card
 
         print("webhook /start from", chat_id, flush=True)
         send_start_card(chat_id)
+    if msg:
+        try:
+            save_group_message(msg)
+        except Exception as exc:
+            print("highlight message", exc, flush=True)
+    counts = data.get("message_reaction_count")
+    if counts:
+        try:
+            save_reaction_count(counts)
+        except Exception as exc:
+            print("highlight counts", exc, flush=True)
+    reaction = data.get("message_reaction")
+    if reaction:
+        try:
+            save_user_reaction(reaction)
+        except Exception as exc:
+            print("highlight reaction", exc, flush=True)
     return HttpResponse("ok")
 
 
@@ -691,6 +935,8 @@ def share_listing(request):
         item = get_object_or_404(Service.objects.alive().select_related("category"), pk=pk)
     elif kind == "company":
         item = get_object_or_404(Company.objects.alive(), pk=pk)
+    elif kind == "market":
+        item = get_object_or_404(MarketItem.objects.alive().select_related("category"), pk=pk)
     else:
         return JsonResponse({"ok": False}, status=400)
     share = listing_share(kind, item)

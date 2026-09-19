@@ -97,7 +97,8 @@ button, input, textarea { font: inherit; font-size: 16px; }
   justify-content: center;
   gap: 2px;
   min-height: 3.25rem;
-  font-size: 11px;
+  padding: 0 2px;
+  font-size: 10px;
   font-weight: 500;
   color: var(--subtle);
   transition: color .15s ease;
@@ -108,12 +109,64 @@ button, input, textarea { font: inherit; font-size: 16px; }
 .hero-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.85), rgba(0,0,0,.3), rgba(0,0,0,.1)); }
 .hero-text { position: absolute; left: 0; right: 0; bottom: 0; padding: 1rem; color: #fff; }
 .hero-text h2 { margin: .25rem 0; font-size: 1.5rem; }
+.hero-text h2.brand {
+  font-family: "Unbounded", "SF Pro Display", system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-size: 1.55rem;
+}
 .hero-text p { margin: .25rem 0 0; max-width: 20rem; font-size: .875rem; opacity: .9; }
 .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; opacity: .85; }
 .shortcuts { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; padding: 1rem 1rem 0; }
+.shortcuts-3 { grid-template-columns: 1fr 1fr 1fr; }
+.shortcuts-3 strong { font-size: 12px; }
 .shortcuts a { background: var(--bg); border-radius: .75rem; padding: 1rem; box-shadow: var(--card); }
 .shortcuts strong { display: block; margin-top: .75rem; font-size: 15px; }
 .shortcuts small { color: var(--muted); font-size: 12px; }
+.today-card {
+  display: block;
+  margin: .75rem 1rem 0;
+  padding: .7rem .85rem .75rem;
+  background: var(--bg);
+  border-radius: .85rem;
+  box-shadow: var(--card);
+  position: relative;
+  z-index: 2;
+}
+.today-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+.today-label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+.today-react {
+  flex-shrink: 0;
+  height: 1.4rem;
+  padding: 0 .5rem;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--card);
+  font-size: 12px;
+  font-weight: 650;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+.today-text {
+  margin: .35rem 0 0;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--fg);
+}
 .tile-icon { width: 2.25rem; height: 2.25rem; display: grid; place-items: center; border-radius: .5rem; background: var(--surface); color: var(--primary); }
 .chips { display: flex; gap: .5rem; overflow-x: auto; padding: .75rem 1rem; scrollbar-width: none; }
 .chips.wrap { flex-wrap: wrap; overflow: visible; }
@@ -226,10 +279,18 @@ button, input, textarea { font: inherit; font-size: 16px; }
   top: 0;
   z-index: 12;
   background: var(--surface);
+  overflow: hidden;
+  max-height: 5.5rem;
   padding: .75rem 0 .25rem;
-  transition: transform .22s ease, opacity .22s ease;
+  transition: max-height .22s ease, opacity .22s ease, padding .22s ease;
 }
-.sticky-bar.is-hidden { transform: translateY(-110%); opacity: 0; pointer-events: none; }
+.sticky-bar.is-hidden {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  pointer-events: none;
+}
 .carousel-main { position: relative; }
 .carousel-track { display: flex; aspect-ratio: 4/3; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: pan-x; }
 .carousel-track::-webkit-scrollbar { display: none; }
@@ -291,6 +352,8 @@ button, input, textarea { font: inherit; font-size: 16px; }
 .photo-btn input { display: none; }
 .photo-tools button:disabled { opacity: .35; }
 .review { display: block; background: var(--bg); border-radius: .75rem; padding: .75rem; }
+.review-own { display: flex; flex-direction: column; gap: .45rem; }
+.review-own .review { margin: 0; }
 .review-gone { opacity: .65; pointer-events: none; }
 .review-head { display: flex; justify-content: space-between; gap: .5rem; font-size: 14px; font-weight: 500; }
 .review p { margin: .4rem 0 0; font-size: 14px; line-height: 1.45; }
@@ -333,11 +396,17 @@ button, input, textarea { font: inherit; font-size: 16px; }
 .seg input { display: none; }
 .add-form .btn { margin-top: 1.25rem; }
 .error { color: var(--danger); font-size: 14px; }
+button, .btn, .btn-contact, .btn-share, .btn-sold, .app-nav a {
+  touch-action: manipulation;
+  cursor: pointer;
+}
 .contact-row {
   display: flex;
   gap: .5rem;
   margin-top: 1rem;
   align-items: stretch;
+  position: relative;
+  z-index: 6;
 }
 .btn-contact {
   display: flex;
@@ -387,10 +456,18 @@ button, input, textarea { font: inherit; font-size: 16px; }
   top: 0;
   z-index: 12;
   background: var(--surface);
+  overflow: hidden;
+  max-height: 5.5rem;
   padding: .75rem 0 .25rem;
-  transition: transform .22s ease, opacity .22s ease;
+  transition: max-height .22s ease, opacity .22s ease, padding .22s ease;
 }
-.sticky-bar.is-hidden { transform: translateY(-110%); opacity: 0; pointer-events: none; }
+.sticky-bar.is-hidden {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  pointer-events: none;
+}
 .addr { margin: .5rem 0 0; font-size: 14px; color: var(--muted); }
 .map-card {
   margin-top: 1rem;
@@ -452,6 +529,50 @@ button, input, textarea { font: inherit; font-size: 16px; }
   font-weight: 600;
   padding: 0;
 }
+.btn-sold {
+  margin-top: .9rem;
+  width: 100%;
+  height: 2.75rem;
+  border: 0;
+  border-radius: .85rem;
+  background: rgba(229, 57, 53, .12);
+  color: #e53935;
+  font-weight: 600;
+  font-size: 15px;
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  z-index: 6;
+}
+.confirm-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(0,0,0,.45);
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+.confirm-box {
+  width: 100%;
+  max-width: 20rem;
+  background: var(--surface);
+  color: var(--fg);
+  border-radius: 1rem;
+  padding: 1.1rem 1rem 1rem;
+  box-shadow: var(--card);
+}
+.confirm-box p { margin: 0 0 1rem; font-size: 15px; line-height: 1.4; }
+.confirm-actions { display: flex; gap: .5rem; }
+.confirm-actions button {
+  flex: 1;
+  height: 2.6rem;
+  border: 0;
+  border-radius: .75rem;
+  font-weight: 600;
+}
+.confirm-actions [data-no] { background: var(--bg); color: var(--fg); }
+.confirm-actions [data-yes] { background: #e53935; color: #fff; }
 .place-btn { padding-bottom: 0; }
 .place-btn .btn { animation: fadeUp .28s ease; }
 .app-main > * { animation: fadeUp .22s ease both; }
@@ -470,4 +591,85 @@ button, input, textarea { font: inherit; font-size: 16px; }
   from { opacity: 0; }
   to { opacity: 1; }
 }
-
+.market-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+  padding: .25rem 1rem 1.25rem;
+}
+.market-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: var(--card);
+  min-width: 0;
+  transition: transform .16s ease;
+}
+.market-card:active { transform: scale(.98); }
+.market-card-img {
+  aspect-ratio: 1;
+  background: var(--bg);
+  overflow: hidden;
+}
+.market-card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  outline: 0;
+}
+.market-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: .7rem .75rem .85rem;
+  min-height: 7rem;
+}
+.market-card-body h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  min-height: 2.5em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.market-card-body p {
+  margin: .3rem 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.35;
+  min-height: 2.7em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+}
+.market-price {
+  margin-top: auto;
+  padding-top: .5rem;
+  font-size: 15px;
+  font-weight: 650;
+}
+.seg-3 label { font-size: 12px; padding: 0 .2rem; }
+.cat-row {
+  display: flex;
+  gap: .4rem;
+  align-items: center;
+}
+.cat-rename { display: flex; gap: .35rem; flex: 1; min-width: 0; }
+.cat-rename input, .cat-add input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: .5rem;
+  padding: .55rem .7rem;
+  background: var(--bg);
+  font-size: 14px;
+}
+.cat-add { display: flex; gap: .5rem; align-items: center; }
+.cat-add .btn { width: auto; height: 2.6rem; padding: 0 1rem; }

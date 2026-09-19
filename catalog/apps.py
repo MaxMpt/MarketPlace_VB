@@ -16,7 +16,7 @@ def _sqlite_wal(sender, connection, **kwargs):
 class CatalogConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "catalog"
-    verbose_name = "Каталог двора"
+    verbose_name = "МАРКЕТПЛЕЙС"
 
     def ready(self):
         connection_created.connect(_sqlite_wal)

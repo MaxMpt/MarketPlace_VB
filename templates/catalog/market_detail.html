@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load catalog_tags %}
+{% block content %}
+{% include "catalog/_carousel.html" with photos=photos %}
+<div class="pad">
+  <p class="eyebrow muted">{% if item.category %}{{ item.category.title }}{% endif %}{% if item.create_user %} · {{ item.create_user.display_name }}{% endif %}</p>
+  <div class="title-row">
+    <h2 class="detail-title">{{ item.name }}</h2>
+    {% if item.create_user_id == resident.id or is_admin %}
+      {% url 'edit_market' item.pk as edit_url %}
+      {% include "catalog/_edit_icon.html" %}
+    {% endif %}
+  </div>
+  <p class="price">{{ item.price_label }}</p>
+  {% if item.description %}<p class="lead">{{ item.description }}</p>{% endif %}
+  <p class="muted tiny">Объявление снимется {{ item.expires_at|date:"d.m.Y" }} — через 60 дней после публикации.</p>
+  {% include "catalog/_contact.html" with author=item.create_user %}
+  {% if item.create_user_id == resident.id %}
+    <form method="post" action="{% url 'delete_listing' %}" data-confirm="Вещь продана? Объявление исчезнет из барахолки.">
+      {% csrf_token %}
+      <input type="hidden" name="kind" value="market">
+      <input type="hidden" name="pk" value="{{ item.pk }}">
+      <input type="hidden" name="next" value="/market/">
+      <button type="submit" class="btn-sold">Снять объявление</button>
+    </form>
+  {% elif is_admin %}
+    <form method="post" action="{% url 'delete_listing' %}" data-confirm="Вы уверены, что хотите удалить объявление?">
+      {% csrf_token %}
+      <input type="hidden" name="kind" value="market">
+      <input type="hidden" name="pk" value="{{ item.pk }}">
+      <input type="hidden" name="next" value="/market/">
+      <button type="submit" class="btn-admin-del">Удалить как админ</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

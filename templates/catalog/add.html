@@ -2,15 +2,16 @@
 {% block content %}
 <form class="pad add-form" method="post" enctype="multipart/form-data">
   {% csrf_token %}
-  <div class="seg">
-    <label class="{% if kind != 'company' %}on{% endif %}"><input type="radio" name="kind" value="service" {% if kind != 'company' %}checked{% endif %}> Услуга</label>
-    <label class="{% if kind == 'company' %}on{% endif %}"><input type="radio" name="kind" value="company" {% if kind == 'company' %}checked{% endif %}> Компания</label>
+  <div class="seg seg-3">
+    <label class="{% if kind == 'service' %}on{% endif %}"><input type="radio" name="kind" value="service" {% if kind == 'service' %}checked{% endif %}> Услуга</label>
+    <label class="{% if kind == 'company' %}on{% endif %}"><input type="radio" name="kind" value="company" {% if kind == 'company' %}checked{% endif %}> Рекомендация</label>
+    <label class="{% if kind == 'market' %}on{% endif %}"><input type="radio" name="kind" value="market" {% if kind == 'market' %}checked{% endif %}> Барахолка</label>
   </div>
 
   <label class="label" for="name">Название</label>
-  <input id="name" name="name" required minlength="2" maxlength="80" placeholder="Маникюр у дома">
+  <input id="name" name="name" required minlength="2" maxlength="80" placeholder="{% if kind == 'market' %}Кофемолка{% elif kind == 'company' %}Пятёрочка на Полянах{% else %}Маникюр у дома{% endif %}">
 
-  <div data-service-only>
+  <div data-service-only {% if kind != 'service' %}hidden{% endif %}>
     <p class="label">Категория</p>
     <div class="chips wrap">
       {% for c in categories %}
@@ -24,10 +25,25 @@
     <input id="price" name="price_note" maxlength="40" placeholder="600 или Договорная">
   </div>
 
+  <div data-market-only {% if kind != 'market' %}hidden{% endif %}>
+    <p class="label">Категория</p>
+    <div class="chips wrap">
+      {% for c in market_categories %}
+        <label class="chip-opt">
+          <input type="radio" name="market_category_id" value="{{ c.pk }}" {% if forloop.first %}checked{% endif %}>
+          {{ c.title }}
+        </label>
+      {% endfor %}
+    </div>
+    <label class="label" for="mprice">Цена</label>
+    <input id="mprice" name="price_note" maxlength="40" placeholder="3200 или Договорная">
+    <p class="muted tiny" style="margin-top:.75rem">Публикуя, вы соглашаетесь: карточка барахолки автоматически удалится через 60 дней.</p>
+  </div>
+
   <label class="label" for="desc">Описание</label>
   <textarea id="desc" name="description" rows="4" maxlength="600"></textarea>
 
-  <div data-company-only hidden>
+  <div data-company-only {% if kind != 'company' %}hidden{% endif %}>
     <p class="label">Категория</p>
     <div class="chips wrap">
       {% for c in company_categories %}
@@ -42,15 +58,10 @@
       <input id="address" name="address" maxlength="255" placeholder="Начните вводить, например Поляны" autocomplete="off">
       <ul id="addr-suggest" class="suggest" hidden></ul>
     </div>
-    <p class="label">Открывать маршрут</p>
-    <div class="seg">
-      <label class="on"><input type="radio" name="map_provider" value="yandex" checked> Яндекс</label>
-      <label><input type="radio" name="map_provider" value="google"> Google</label>
-    </div>
-    <p class="muted tiny">По умолчанию Яндекс. Карта подставится по адресу.</p>
     <iframe id="pick-frame" class="map-picker" title="Карта" src="https://yandex.ru/map-widget/v1/?ll=37.5433,55.5477&z=15" loading="lazy"></iframe>
     <input type="hidden" name="lat" id="lat">
     <input type="hidden" name="lng" id="lng">
+    <input type="hidden" name="map_provider" value="yandex">
   </div>
 
   <p class="label">Фото</p>
@@ -65,38 +76,48 @@
 <script>
   const serviceOnly = document.querySelector('[data-service-only]');
   const companyOnly = document.querySelector('[data-company-only]');
+  const marketOnly = document.querySelector('[data-market-only]');
   const address = document.getElementById('address');
   const suggest = document.getElementById('addr-suggest');
   const frame = document.getElementById('pick-frame');
   const latInput = document.getElementById('lat');
   const lngInput = document.getElementById('lng');
+  const nameInput = document.getElementById('name');
+  const placeholders = {
+    service: 'Маникюр у дома',
+    company: 'Пятёрочка на Полянах',
+    market: 'Кофемолка',
+  };
   let timer;
 
-  function provider() {
-    return document.querySelector('input[name=map_provider]:checked')?.value || 'yandex';
-  }
+  function provider() { return 'yandex'; }
   function syncKind() {
-    const company = document.querySelector('input[name=kind]:checked')?.value === 'company';
-    if (serviceOnly) serviceOnly.hidden = company;
-    if (companyOnly) companyOnly.hidden = !company;
+    const kind = document.querySelector('input[name=kind]:checked')?.value || 'service';
+    if (nameInput) nameInput.placeholder = placeholders[kind] || placeholders.service;
+    if (serviceOnly) {
+      serviceOnly.hidden = kind !== 'service';
+      serviceOnly.querySelectorAll('input,textarea,select').forEach((el) => { el.disabled = kind !== 'service'; });
+    }
+    if (companyOnly) {
+      companyOnly.hidden = kind !== 'company';
+      companyOnly.querySelectorAll('input,textarea,select').forEach((el) => { el.disabled = kind !== 'company'; });
+    }
+    if (marketOnly) {
+      marketOnly.hidden = kind !== 'market';
+      marketOnly.querySelectorAll('input,textarea,select').forEach((el) => { el.disabled = kind !== 'market'; });
+    }
     document.querySelectorAll('.seg').forEach((seg) => {
       seg.querySelectorAll('label').forEach((el) => el.classList.toggle('on', el.querySelector('input').checked));
     });
-    if (company) updateMap();
+    if (kind === 'company') updateMap();
   }
   function updateMap() {
     const lat = latInput.value;
     const lng = lngInput.value;
     const q = encodeURIComponent(address.value || '');
-    if (provider() === 'google') {
-      if (lat && lng) frame.src = `https://maps.google.com/maps?q=${lat},${lng}&hl=ru&z=16&output=embed`;
-      else if (address.value) frame.src = `https://maps.google.com/maps?q=${q}&hl=ru&z=16&output=embed`;
-      else frame.src = 'https://maps.google.com/maps?q=55.5477,37.5433&hl=ru&z=15&output=embed';
-    } else {
-      if (lat && lng) frame.src = `https://yandex.ru/map-widget/v1/?ll=${lng},${lat}&pt=${lng},${lat}&z=16&l=map`;
-      else if (address.value) frame.src = `https://yandex.ru/map-widget/v1/?text=${q}&z=16`;
-      else frame.src = 'https://yandex.ru/map-widget/v1/?ll=37.5433,55.5477&z=15';
-    }
+    if (lat && lng) frame.src = `https://yandex.ru/map-widget/v1/?ll=${lng},${lat}&pt=${lng},${lat}&z=16&l=map`;
+    else if (address.value) frame.src = `https://yandex.ru/map-widget/v1/?text=${q}&z=16`;
+    else frame.src = 'https://yandex.ru/map-widget/v1/?ll=37.5433,55.5477&z=15';
   }
   function hideSuggest() { suggest.hidden = true; suggest.innerHTML = ''; }
   const suggestUrl = "{% url 'geo_suggest' %}";
@@ -130,10 +151,6 @@
   });
   address.addEventListener('blur', function () { setTimeout(hideSuggest, 150); });
   document.querySelectorAll('input[name=kind]').forEach((el) => el.addEventListener('change', syncKind));
-  document.querySelectorAll('input[name=map_provider]').forEach((el) => el.addEventListener('change', function () {
-    document.querySelectorAll('input[name=map_provider]').forEach((r) => r.parentElement.classList.toggle('on', r.checked));
-    updateMap();
-  }));
   syncKind();
 </script>
 {% endblock %}

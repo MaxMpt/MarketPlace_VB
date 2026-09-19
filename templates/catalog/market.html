@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load catalog_tags %}
+{% block content %}
+<div class="pad place-btn">
+  <a class="btn" href="{% url 'add' %}?kind=market">+ Продать вещь</a>
+</div>
+<div class="sticky-bar js-hide-bar">
+  <div class="chips js-cats">
+    <a class="{% if not active_cat %}chip-on{% endif %}" href="{% url 'market' %}">Все</a>
+    {% for c in categories %}
+      <a class="{% if active_cat == c.slug %}chip-on{% endif %}" href="{% url 'market' %}?cat={{ c.slug }}">{{ c.title }}</a>
+    {% endfor %}
+  </div>
+</div>
+<div class="market-grid js-cards">
+  {% for item in items %}
+    <a class="market-card" href="{% url 'market_detail' item.pk %}">
+      <div class="market-card-img">
+        {% if item.cover %}<img src="{{ item.cover }}" alt="">{% endif %}
+      </div>
+      <div class="market-card-body">
+        <h3>{{ item.name }}</h3>
+        <p>{{ item.description|default:"" }}</p>
+        <span class="market-price">{{ item.price_label }}</span>
+      </div>
+    </a>
+  {% empty %}
+    <p class="empty" style="grid-column:1/-1">В этой категории пока пусто.</p>
+  {% endfor %}
+</div>
+{% endblock %}

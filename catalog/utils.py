@@ -100,24 +100,27 @@ def listing_share(kind: str, item) -> dict:
     from html import escape
     from django.conf import settings
 
-    param = f"{'s' if kind == 'service' else 'c'}{item.pk}"
+    codes = {"service": "s", "company": "c", "market": "m"}
+    param = f"{codes.get(kind, 's')}{item.pk}"
     deep = telegram_app_link(param)
-    rating = getattr(item, "rating_value", 0) or 0
-    count = getattr(item, "rating_count", 0) or 0
-    if count:
-        rating_line = f"{str(rating).replace('.', ',')} · {count} оценок"
-    else:
-        rating_line = "пока нет оценок"
     meta = []
-    if kind == "service" and getattr(item, "category", None):
+    if getattr(item, "category", None):
         meta.append(item.category.title)
-    meta.append(rating_line)
     price = ""
-    if kind == "service":
+    if kind in {"service", "market"}:
         raw = item.price_label() if callable(getattr(item, "price_label", None)) else getattr(item, "price_label", "")
         price = str(raw or "")
+    if kind != "market":
+        rating = getattr(item, "rating_value", 0) or 0
+        count = getattr(item, "rating_count", 0) or 0
+        if count:
+            meta.append(f"{str(rating).replace('.', ',')} · {count} оценок")
+        else:
+            meta.append("пока нет оценок")
     desc = (item.description or "").strip()
-    html = [f"<b>{escape(item.name)}</b>", escape(" · ".join(meta))]
+    html = [f"<b>{escape(item.name)}</b>"]
+    if meta:
+        html.append(escape(" · ".join(meta)))
     if price:
         html.append(f"<b>{escape(price)}</b>")
     if desc:

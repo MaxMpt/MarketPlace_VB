@@ -1,6 +1,16 @@
 from django.core.management.base import BaseCommand
 
-from catalog.models import Company, CompanyCategory, Photo, RatingReview, Resident, Service, ServiceCategory
+from catalog.models import (
+    Company,
+    CompanyCategory,
+    MarketCategory,
+    MarketItem,
+    Photo,
+    RatingReview,
+    Resident,
+    Service,
+    ServiceCategory,
+)
 
 
 USERS = [
@@ -51,6 +61,22 @@ COMPANIES = [
     ("kids", "Детский клуб «Светлячок»", "Развивающие занятия 3–6 лет, суббота утром.", 4.90, 1, 4, "catalog/photos/kids.jpg"),
 ]
 
+MARKET_CATEGORIES = [
+    ("clothing", "Одежда", 10),
+    ("kids", "Детское", 20),
+    ("home", "Для дома", 30),
+    ("electronics", "Техника", 40),
+    ("hobby", "Хобби", 50),
+    ("auto", "Авто", 60),
+    ("other", "Другое", 70),
+]
+
+MARKET_ITEMS = [
+    ("clothing", "Куртка зимняя, 46", "Тёмно-синяя, почти не носили. Капюшон отстёгивается, без пятен и потёртостей.", 450000, "", 1, "catalog/photos/hair.jpg"),
+    ("electronics", "Кофеварка капельная", "Рабочая, фильтр новый. Отдам с мерной ложкой и инструкцией.", 220000, "", 1, "catalog/photos/repair.jpg"),
+    ("kids", "Конструктор, коробка полная", "Все детали на месте, инструкция внутри. Ребёнок вырос — отдаём соседям.", 180000, "", 1, "catalog/photos/kids.jpg"),
+]
+
 SERVICE_REVIEWS = [
     ("Маникюр у дома", 3, "Катя", 5, "Держится три недели, очень аккуратно."),
     ("Маникюр у дома", 4, "Юля", 4, "Хорошо, чуть задержалась к записи."),
@@ -76,7 +102,7 @@ COMPANY_REVIEWS = [
 
 
 class Command(BaseCommand):
-    help = "Заполняет каталог двора демо-данными"
+    help = "Заполняет МАРКЕТПЛЕЙС демо-данными"
 
     def handle(self, *args, **options):
         for uid, username, first in USERS:
@@ -129,6 +155,27 @@ class Command(BaseCommand):
             if created or not company.photos.exists():
                 Photo.objects.get_or_create(
                     company=company, external_url=photo, defaults={"sort_order": 0}
+                )
+        market_cats = {}
+        for slug, title, order in MARKET_CATEGORIES:
+            cat, _ = MarketCategory.objects.update_or_create(
+                slug=slug, defaults={"title": title, "sort_order": order}
+            )
+            market_cats[slug] = cat
+        for slug, name, desc, cents, note, uid, photo in MARKET_ITEMS:
+            item, created = MarketItem.objects.get_or_create(
+                name=name,
+                defaults={
+                    "category": market_cats[slug],
+                    "description": desc,
+                    "price_cents": cents,
+                    "price_note": note,
+                    "create_user_id": uid,
+                },
+            )
+            if created or not item.photos.exists():
+                Photo.objects.get_or_create(
+                    market=item, external_url=photo, defaults={"sort_order": 0}
                 )
         for name, uid, author, rating, body in SERVICE_REVIEWS:
             service = Service.objects.get(name=name)
