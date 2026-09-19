@@ -12,6 +12,7 @@
     {% endfor %}
   </div>
 </div>
+<div class="app-scroll">
 <div class="market-grid js-cards">
   {% for item in items %}
     <a class="market-card" href="{% url 'market_detail' item.pk %}">
@@ -27,5 +28,6 @@
   {% empty %}
     <p class="empty" style="grid-column:1/-1">В этой категории пока пусто.</p>
   {% endfor %}
+</div>
 </div>
 {% endblock %}

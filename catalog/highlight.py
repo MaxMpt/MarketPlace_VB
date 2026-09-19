@@ -167,18 +167,25 @@ def today_highlight():
     today = timezone.localdate()
     now = timezone.now()
     snap = HighlightSnapshot.objects.filter(day=today).select_related("post").first()
-    if snap and snap.post_id and snap.computed_at and now - snap.computed_at < REFRESH:
+    if snap and snap.post_id and snap.post and not snap.post.is_demo and snap.computed_at and now - snap.computed_at < REFRESH:
         return snap.post
-    qs = ChatPost.objects.filter(chat_id=gid, day=today)
-    winner = (
-        qs.filter(is_demo=False, reaction_count__gte=1).order_by("-reaction_count", "-message_id").first()
-        or qs.filter(is_demo=True).order_by("-reaction_count", "-message_id").first()
-        or qs.filter(reaction_count__gte=1).order_by("-reaction_count", "-message_id").first()
-    )
+    qs = ChatPost.objects.filter(chat_id=gid, day=today, is_demo=False, reaction_count__gte=1)
+    winner = qs.order_by("-reaction_count", "-message_id").first()
     HighlightSnapshot.objects.update_or_create(
         day=today, defaults={"post": winner, "computed_at": now}
     )
     return winner
+
+
+def drop_demo_highlights() -> int:
+    deleted, _ = ChatPost.objects.filter(is_demo=True).delete()
+    HighlightSnapshot.objects.all().delete()
+    return deleted
+
+
+def refresh_today_highlight():
+    drop_demo_highlights()
+    return today_highlight()
 
 
 def _download_photo(pk: int, file_id: str) -> None:

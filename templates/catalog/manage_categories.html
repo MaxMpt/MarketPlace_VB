@@ -1,15 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
-{% if error %}<p class="error pad">{{ error }}</p>{% endif %}
-<section class="section">
+<div class="pad cat-page">
+  <p class="cat-lead">Категории видят все жители на вкладках Услуги, Рекомендации и Барахолка. Скрытие не удаляет объявления.</p>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+</div>
+<section class="section cat-block">
   <h3>Услуги</h3>
   {% include "catalog/_cat_admin.html" with kind="service" cats=service_cats %}
 </section>
-<section class="section">
+<section class="section cat-block">
   <h3>Рекомендации</h3>
   {% include "catalog/_cat_admin.html" with kind="company" cats=company_cats %}
 </section>
-<section class="section">
+<section class="section cat-block">
   <h3>Барахолка</h3>
   {% include "catalog/_cat_admin.html" with kind="market" cats=market_cats %}
 </section>

@@ -1,31 +1,36 @@
-
-<div class="stack">
+<div class="cat-list">
   {% for c in cats %}
-  <div class="cat-row">
+  <div class="cat-item">
     <form method="post" class="cat-rename">
       {% csrf_token %}
       <input type="hidden" name="kind" value="{{ kind }}">
       <input type="hidden" name="action" value="rename">
       <input type="hidden" name="pk" value="{{ c.pk }}">
-      <input name="title" value="{{ c.title }}" maxlength="64" required>
-      <button type="submit" class="photo-btn">Ок</button>
+      <label class="cat-field">
+        <span>Название</span>
+        <input name="title" value="{{ c.title }}" maxlength="64" required>
+      </label>
+      <button type="submit" class="cat-btn save">Сохранить</button>
     </form>
-    <form method="post" data-confirm="Скрыть категорию «{{ c.title }}»?">
+    <form method="post" class="cat-remove" data-confirm="Скрыть категорию «{{ c.title }}»? Объявления в ней останутся.">
       {% csrf_token %}
       <input type="hidden" name="kind" value="{{ kind }}">
       <input type="hidden" name="action" value="delete">
       <input type="hidden" name="pk" value="{{ c.pk }}">
-      <button type="submit" class="photo-btn danger">Удалить</button>
+      <button type="submit" class="cat-btn del">Удалить</button>
     </form>
   </div>
   {% empty %}
-  <p class="empty">Категорий нет.</p>
+  <p class="empty">Категорий пока нет — добавьте первую ниже.</p>
   {% endfor %}
   <form method="post" class="cat-add">
     {% csrf_token %}
     <input type="hidden" name="kind" value="{{ kind }}">
     <input type="hidden" name="action" value="add">
-    <input name="title" maxlength="64" required placeholder="Новая категория">
-    <button class="btn" type="submit">Добавить</button>
+    <label class="cat-field">
+      <span>Новая категория</span>
+      <input name="title" maxlength="64" required placeholder="Например, Красота">
+    </label>
+    <button class="cat-btn add" type="submit">Добавить</button>
   </form>
 </div>

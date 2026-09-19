@@ -298,14 +298,34 @@
   });
 
   var hideBar = document.querySelector(".js-hide-bar");
-  var scroller = document.querySelector(".app-main");
+  var scroller = document.querySelector(".app-scroll") || document.querySelector(".app-main");
   if (hideBar && scroller) {
     var lastY = 0;
+    var ticking = false;
+    var hidden = false;
     scroller.addEventListener("scroll", function () {
-      var y = scroller.scrollTop;
-      if (y > lastY + 8 && y > 48) hideBar.classList.add("is-hidden");
-      else if (y < lastY - 8) hideBar.classList.remove("is-hidden");
-      lastY = y;
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(function () {
+        ticking = false;
+        var y = Math.max(0, scroller.scrollTop);
+        var dy = y - lastY;
+        lastY = y;
+        if (y < 16) {
+          if (hidden) {
+            hideBar.classList.remove("is-hidden");
+            hidden = false;
+          }
+          return;
+        }
+        if (dy > 12 && !hidden) {
+          hideBar.classList.add("is-hidden");
+          hidden = true;
+        } else if (dy < -12 && hidden) {
+          hideBar.classList.remove("is-hidden");
+          hidden = false;
+        }
+      });
     }, { passive: true });
   }
 })();

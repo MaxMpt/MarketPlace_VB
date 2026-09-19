@@ -12,6 +12,7 @@
     {% endfor %}
   </div>
 </div>
+<div class="app-scroll">
 <div class="stack pad js-cards">
   {% for s in services %}
     {% url 'service_detail' s.pk as card_url %}
@@ -23,5 +24,6 @@
   {% empty %}
     <p class="empty">В этой категории пока пусто.</p>
   {% endfor %}
+</div>
 </div>
 {% endblock %}
