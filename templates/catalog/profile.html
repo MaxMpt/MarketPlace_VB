@@ -140,11 +140,11 @@
         </div>
         {% if r.review_text %}<p>{{ r.review_text }}</p>{% endif %}
       {% if r.target_url %}</a>{% else %}</div>{% endif %}
-      <form class="card-del" method="post" action="{% url 'delete_review' %}" data-confirm="Вы уверены, что хотите удалить отзыв?">
+      <form class="review-del" method="post" action="{% url 'delete_review' %}" data-confirm="Удалить ваш отзыв? Его больше не увидят соседи.">
         {% csrf_token %}
         <input type="hidden" name="pk" value="{{ r.pk }}">
         <input type="hidden" name="next" value="/profile/">
-        <button type="submit" style="appearance:none;-webkit-appearance:none;border:0;border-radius:999px;height:28px;padding:0 10px;background:rgba(229,57,53,.16);color:#e53935;font:600 11px/1 system-ui,sans-serif">Удалить</button>
+        <button type="submit">Удалить отзыв</button>
       </form>
       </div>
       {% if forloop.last and reviews|length > 3 %}</div>

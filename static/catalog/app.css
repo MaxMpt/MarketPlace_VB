@@ -88,20 +88,25 @@ button, input, textarea { font: inherit; font-size: 16px; }
   border-top: 1px solid var(--border);
   flex-shrink: 0;
   background: var(--surface);
+  z-index: 8;
 }
 .app-nav a {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
   min-height: 3.25rem;
-  padding: 0 2px;
-  font-size: 10px;
+  padding: 0 1px;
+  font-size: 9px;
   font-weight: 500;
   color: var(--subtle);
   transition: color .15s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .app-nav a.active { color: var(--primary); }
 .hero { position: relative; height: 13rem; }
@@ -128,11 +133,15 @@ button, input, textarea { font: inherit; font-size: 16px; }
   display: block;
   margin: .75rem 1rem 0;
   padding: .7rem .85rem .75rem;
-  background: var(--bg);
+  background: #eaf3fc;
+  border: 1px solid rgba(51, 144, 236, .22);
   border-radius: .85rem;
-  box-shadow: var(--card);
   position: relative;
   z-index: 2;
+}
+html.dark .today-card {
+  background: #243044;
+  border: 1px solid rgba(10, 132, 255, .35);
 }
 .today-top {
   display: flex;
@@ -352,8 +361,20 @@ button, input, textarea { font: inherit; font-size: 16px; }
 .photo-btn input { display: none; }
 .photo-tools button:disabled { opacity: .35; }
 .review { display: block; background: var(--bg); border-radius: .75rem; padding: .75rem; }
-.review-own { display: flex; flex-direction: column; gap: .45rem; }
+.review-own { display: flex; flex-direction: column; gap: .4rem; position: relative; }
 .review-own .review { margin: 0; }
+.review-del { margin: 0; }
+.review-del button {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: none;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0;
+  align-self: flex-start;
+}
 .review-gone { opacity: .65; pointer-events: none; }
 .review-head { display: flex; justify-content: space-between; gap: .5rem; font-size: 14px; font-weight: 500; }
 .review p { margin: .4rem 0 0; font-size: 14px; line-height: 1.45; }
