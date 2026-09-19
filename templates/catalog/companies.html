@@ -1,16 +1,24 @@
 {% extends "base.html" %}
 {% load catalog_tags %}
 {% block content %}
-<div class="stack pad">
+<div class="sticky-bar js-hide-bar">
+  <div class="chips js-cats">
+    <a class="{% if not active_cat %}chip-on{% endif %}" href="{% url 'companies' %}">Все</a>
+    {% for c in categories %}
+      <a class="{% if active_cat == c.slug %}chip-on{% endif %}" href="{% url 'companies' %}?cat={{ c.slug }}">{{ c.title }}</a>
+    {% endfor %}
+  </div>
+</div>
+<div class="stack pad js-cards">
   {% for c in companies %}
     {% url 'company_detail' c.pk as card_url %}
     {% url 'edit_company' c.pk as edit_url %}
     <div class="{% if c.create_user_id == resident.id or is_admin %}card-own{% endif %}">
-      {% include "catalog/_card.html" with href=card_url name=c.name subtitle=c.description rating=c.rating_value count=c.rating_count cover=c.cover %}
+      {% include "catalog/_card.html" with href=card_url name=c.name subtitle=c.category.title rating=c.rating_value count=c.rating_count cover=c.cover %}
       {% if c.create_user_id == resident.id or is_admin %}{% include "catalog/_edit_icon.html" %}{% endif %}
     </div>
   {% empty %}
-    <p class="empty">Компаний пока нет.</p>
+    <p class="empty">В этой категории пока пусто.</p>
   {% endfor %}
 </div>
 {% endblock %}

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils import timezone
 
-from .models import Company, Photo, RatingReview, Resident, Service, ServiceCategory, UserSettings
+from .models import Company, CompanyCategory, Photo, RatingReview, Resident, Service, ServiceCategory, UserSettings
 from .notify import send_telegram
 
 
@@ -41,9 +41,14 @@ class ServiceAdmin(SoftDeleteAdmin):
     list_display = ("name", "category", "create_user", "rating_value", "deleted_at")
 
 
+@admin.register(CompanyCategory)
+class CompanyCategoryAdmin(admin.ModelAdmin):
+    list_display = ("title", "slug", "sort_order")
+
+
 @admin.register(Company)
 class CompanyAdmin(SoftDeleteAdmin):
-    list_display = ("name", "address", "create_user", "rating_value", "deleted_at")
+    list_display = ("name", "category", "address", "create_user", "rating_value", "deleted_at")
 
 
 @admin.register(RatingReview)

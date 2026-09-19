@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from catalog.models import Company, Photo, RatingReview, Resident, Service, ServiceCategory
+from catalog.models import Company, CompanyCategory, Photo, RatingReview, Resident, Service, ServiceCategory
 
 
 USERS = [
@@ -34,10 +34,21 @@ SERVICES = [
     ("childcare", "Няня на вечер", "Посидеть с ребёнком 3–8 лет, прогулка во двор, уроки. Соседка из 12 подъезда.", 60000, "от 600 ₽/час", 5.00, 1, 2, "catalog/photos/kids.jpg"),
 ]
 
+COMPANY_CATEGORIES = [
+    ("shops", "Магазины", 10),
+    ("pharmacy", "Аптеки", 20),
+    ("cafe", "Кафе", 30),
+    ("kids", "Дети", 40),
+    ("health", "Медицина", 50),
+    ("household", "Быт", 60),
+    ("sport", "Спорт", 70),
+    ("other", "Другое", 80),
+]
+
 COMPANIES = [
-    ("Пятёрочка на Полянах", "Продукты, готовка, пекарня. Открыто до 23:00.", 4.10, 2, 1, "catalog/photos/shop.jpg"),
-    ("Аптека у дома", "Лекарства, детское питание, очередь обычно короткая.", 4.60, 2, 1, "catalog/photos/pharmacy.jpg"),
-    ("Детский клуб «Светлячок»", "Развивающие занятия 3–6 лет, суббота утром.", 4.90, 1, 4, "catalog/photos/kids.jpg"),
+    ("shops", "Пятёрочка на Полянах", "Продукты, готовка, пекарня. Открыто до 23:00.", 4.10, 2, 1, "catalog/photos/shop.jpg"),
+    ("pharmacy", "Аптека у дома", "Лекарства, детское питание, очередь обычно короткая.", 4.60, 2, 1, "catalog/photos/pharmacy.jpg"),
+    ("kids", "Детский клуб «Светлячок»", "Развивающие занятия 3–6 лет, суббота утром.", 4.90, 1, 4, "catalog/photos/kids.jpg"),
 ]
 
 SERVICE_REVIEWS = [
@@ -95,16 +106,26 @@ class Command(BaseCommand):
                 Photo.objects.get_or_create(
                     service=service, external_url=photo, defaults={"sort_order": 0}
                 )
-        for name, desc, rating, count, uid, photo in COMPANIES:
+        company_cats = {}
+        for slug, title, order in COMPANY_CATEGORIES:
+            cat, _ = CompanyCategory.objects.update_or_create(
+                slug=slug, defaults={"title": title, "sort_order": order}
+            )
+            company_cats[slug] = cat
+        for slug, name, desc, rating, count, uid, photo in COMPANIES:
             company, created = Company.objects.get_or_create(
                 name=name,
                 defaults={
+                    "category": company_cats.get(slug),
                     "description": desc,
                     "rating_value": rating,
                     "rating_count": count,
                     "create_user_id": uid,
                 },
             )
+            if not created and not company.category_id and slug in company_cats:
+                company.category = company_cats[slug]
+                company.save(update_fields=["category"])
             if created or not company.photos.exists():
                 Photo.objects.get_or_create(
                     company=company, external_url=photo, defaults={"sort_order": 0}

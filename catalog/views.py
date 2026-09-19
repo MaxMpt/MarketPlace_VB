@@ -7,7 +7,7 @@ from django.views.decorators.http import require_GET, require_POST
 from urllib.parse import quote
 import json
 
-from .models import Company, Photo, RatingReview, Service, ServiceCategory, UserSettings
+from .models import Company, CompanyCategory, Photo, RatingReview, Service, ServiceCategory, UserSettings
 from .notify import is_admin, login_of, notify_admins, send_share_card, send_telegram, stars_word
 from .utils import listing_share, parse_price_input, save_resized_image, telegram_contact_url
 
@@ -25,6 +25,7 @@ def home(request):
     )
     companies = (
         Company.objects.alive()
+        .select_related("category")
         .prefetch_related(_photos())
         .order_by("-rating_value", "-rating_count", "id")[:2]
     )
@@ -113,17 +114,30 @@ def service_detail(request, pk):
 
 
 def companies_list(request):
-    companies = Company.objects.alive().prefetch_related(_photos()).order_by("-rating_value", "-rating_count", "id")
+    slug = request.GET.get("cat") or ""
+    qs = (
+        Company.objects.alive()
+        .select_related("category", "create_user")
+        .prefetch_related(_photos())
+        .order_by("-rating_value", "-rating_count", "id")
+    )
+    if slug:
+        qs = qs.filter(category__slug=slug)
     return render(
         request,
         "catalog/companies.html",
-        {"companies": companies, "title": "Компании района"},
+        {
+            "categories": CompanyCategory.objects.alive(),
+            "companies": qs,
+            "active_cat": slug,
+            "title": "Компании района",
+        },
     )
 
 
 def company_detail(request, pk):
     company = get_object_or_404(
-        Company.objects.alive().select_related("create_user").prefetch_related(_photos()),
+        Company.objects.alive().select_related("create_user", "category").prefetch_related(_photos()),
         pk=pk,
     )
     reviews = company.reviews.alive().select_related("create_user").prefetch_related(_photos())
@@ -152,7 +166,7 @@ def profile(request):
         .select_related("category")
         .prefetch_related(_photos())
     )
-    companies = Company.objects.alive().filter(create_user=user).prefetch_related(_photos())
+    companies = Company.objects.alive().filter(create_user=user).select_related("category").prefetch_related(_photos())
     reviews = RatingReview.objects.alive().filter(create_user=user).select_related("service", "company")
     prefs, _ = UserSettings.objects.get_or_create(user=user)
     return render(
@@ -255,6 +269,7 @@ def _need_telegram(request):
 
 def add_listing(request):
     categories = list(ServiceCategory.objects.alive())
+    company_categories = list(CompanyCategory.objects.alive())
     error = ""
     kind = request.POST.get("kind", "service")
     if request.method == "POST":
@@ -290,29 +305,38 @@ def add_listing(request):
                     )
                     return redirect("service_detail", pk=service.pk)
             else:
-                lat, lng = _parse_point(request)
-                provider = request.POST.get("map_provider") or "yandex"
-                if provider not in {"yandex", "google"}:
-                    provider = "yandex"
-                company = Company.objects.create(
-                    name=name,
-                    description=description,
-                    create_user=request.resident,
-                    address=(request.POST.get("address") or "").strip()[:255],
-                    lat=lat,
-                    lng=lng,
-                    map_provider=provider,
-                )
-                _save_photos(files, company=company)
-                notify_admins(
-                    f"Новая компания «{company.name}» от {login_of(request.resident)}"
-                )
-                return redirect("company_detail", pk=company.pk)
+                try:
+                    company_cat = CompanyCategory.objects.alive().get(
+                        pk=int(request.POST.get("company_category_id") or 0)
+                    )
+                except (CompanyCategory.DoesNotExist, ValueError, TypeError):
+                    error = "Выберите категорию компании"
+                else:
+                    lat, lng = _parse_point(request)
+                    provider = request.POST.get("map_provider") or "yandex"
+                    if provider not in {"yandex", "google"}:
+                        provider = "yandex"
+                    company = Company.objects.create(
+                        category=company_cat,
+                        name=name,
+                        description=description,
+                        create_user=request.resident,
+                        address=(request.POST.get("address") or "").strip()[:255],
+                        lat=lat,
+                        lng=lng,
+                        map_provider=provider,
+                    )
+                    _save_photos(files, company=company)
+                    notify_admins(
+                        f"Новая компания «{company.name}» от {login_of(request.resident)}"
+                    )
+                    return redirect("company_detail", pk=company.pk)
     return render(
         request,
         "catalog/add.html",
         {
             "categories": categories,
+            "company_categories": company_categories,
             "title": "Новая карточка",
             "back": "/",
             "error": error,
@@ -397,6 +421,12 @@ def edit_company(request, pk):
                 provider = "yandex"
             company.name = name
             company.description = description
+            try:
+                company.category = CompanyCategory.objects.alive().get(
+                    pk=int(request.POST.get("company_category_id") or 0)
+                )
+            except (CompanyCategory.DoesNotExist, ValueError, TypeError):
+                pass
             company.address = (request.POST.get("address") or "").strip()[:255]
             if lat and lng:
                 company.lat = lat
@@ -413,6 +443,7 @@ def edit_company(request, pk):
         {
             "kind": "company",
             "item": company,
+            "company_categories": CompanyCategory.objects.alive(),
             "photos": company.photos.filter(deleted_at__isnull=True).order_by("sort_order", "id"),
             "error": error,
             "title": "Изменить компанию",
@@ -494,9 +525,12 @@ def _owned_photo(request):
 
 @require_POST
 def add_review(request):
-    rating = int(request.POST.get("rating") or 5)
-    rating = min(5, max(1, rating))
+    rating_raw = request.POST.get("rating")
     text = (request.POST.get("text") or "").strip()
+    if not rating_raw and not text:
+        return redirect(request.META.get("HTTP_REFERER") or "/")
+    rating = int(rating_raw or 5)
+    rating = min(5, max(1, rating))
     service_id = request.POST.get("service_id")
     company_id = request.POST.get("company_id")
     user = request.resident

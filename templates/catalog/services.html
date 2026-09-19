@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% load catalog_tags %}
 {% block content %}
+<div class="pad place-btn">
+  <a class="btn" href="{% url 'add' %}">+ Разместить объявление</a>
+</div>
 <div class="sticky-bar js-hide-bar">
   <div class="chips js-cats">
     <a class="{% if not active_cat %}chip-on{% endif %}" href="{% url 'services' %}">Все</a>

@@ -3,6 +3,7 @@
 {% block content %}
 {% include "catalog/_carousel.html" %}
 <div class="pad">
+  <p class="eyebrow muted">{% if company.category %}{{ company.category.title }}{% endif %}{% if company.create_user %} · {{ company.create_user.display_name }}{% endif %}</p>
   <div class="title-row">
     <h2 class="detail-title">{{ company.name }}</h2>
     {% if company.create_user_id == resident.id or is_admin %}
@@ -58,21 +59,6 @@
       </article>
     {% endfor %}
   </div>
-  <form class="review-form" method="post" action="{% url 'add_review' %}" enctype="multipart/form-data">
-    {% csrf_token %}
-    <input type="hidden" name="company_id" value="{{ company.pk }}">
-    <p class="label">{% if my_review %}Ваша оценка — можно изменить{% else %}Ваша оценка{% endif %}</p>
-    <div class="rate">
-      {% for n in "12345"|make_list %}
-        <label><input type="radio" name="rating" value="{{ forloop.counter }}" {% if my_review and forloop.counter == my_review.rating or not my_review and forloop.counter == 5 %}checked{% endif %}> ★</label>
-      {% endfor %}
-    </div>
-    <p class="muted tiny">Подпись из Telegram: {{ resident.display_name }}</p>
-    <textarea name="text" rows="3" maxlength="800" placeholder="Коротко, по делу">{{ my_review.review_text }}</textarea>
-    <p class="label">Фото</p>
-    <p class="muted tiny">До 3 снимков, по желанию</p>
-    <input type="file" name="photos" accept="image/*" multiple>
-    <button class="btn" type="submit">{% if my_review %}Сохранить оценку{% else %}Опубликовать{% endif %}</button>
-  </form>
+  {% include "catalog/_review_form.html" %}
 </section>
 {% endblock %}

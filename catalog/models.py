@@ -54,7 +54,26 @@ class ServiceCategory(models.Model):
         return self.title
 
 
+class CompanyCategory(models.Model):
+    slug = models.SlugField(max_length=32)
+    title = models.CharField(max_length=64)
+    sort_order = models.SmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    objects = AliveQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+
+    def __str__(self):
+        return self.title
+
+
 class Company(models.Model):
+    category = models.ForeignKey(
+        CompanyCategory, null=True, blank=True, on_delete=models.PROTECT, related_name="companies"
+    )
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, default="")
     rating_value = models.DecimalField(max_digits=3, decimal_places=2, default=0)
@@ -159,7 +178,7 @@ class Service(models.Model):
         if self.price_note:
             return self.price_note
         if self.price_cents is None:
-            return "Договорная"
+            return "договорная"
         rub = round(self.price_cents / 100)
         return f"от {rub:,}".replace(",", " ") + " ₽"
 

@@ -61,14 +61,10 @@
       {% url 'company_detail' c.pk as card_url %}
       {% url 'edit_company' c.pk as edit_url %}
       <div class="{% if c.create_user_id == resident.id or is_admin %}card-own{% endif %}">
-        {% include "catalog/_card.html" with href=card_url name=c.name subtitle=c.description rating=c.rating_value count=c.rating_count cover=c.cover %}
+        {% include "catalog/_card.html" with href=card_url name=c.name subtitle=c.category.title rating=c.rating_value count=c.rating_count cover=c.cover %}
         {% if c.create_user_id == resident.id or is_admin %}{% include "catalog/_edit_icon.html" %}{% endif %}
       </div>
     {% endfor %}
   </div>
 </section>
-
-<div class="pad">
-  <a class="btn" href="{% url 'add' %}">+ Разместить объявление</a>
-</div>
 {% endblock %}

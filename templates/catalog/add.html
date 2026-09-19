@@ -28,6 +28,15 @@
   <textarea id="desc" name="description" rows="4" maxlength="600"></textarea>
 
   <div data-company-only hidden>
+    <p class="label">Категория</p>
+    <div class="chips wrap">
+      {% for c in company_categories %}
+        <label class="chip-opt">
+          <input type="radio" name="company_category_id" value="{{ c.pk }}" {% if forloop.first %}checked{% endif %}>
+          {{ c.title }}
+        </label>
+      {% endfor %}
+    </div>
     <label class="label" for="address">Адрес</label>
     <div class="addr-wrap">
       <input id="address" name="address" maxlength="255" placeholder="Начните вводить, например Поляны" autocomplete="off">

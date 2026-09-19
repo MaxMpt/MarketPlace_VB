@@ -72,7 +72,7 @@
       {% url 'company_detail' c.pk as card_url %}
       {% url 'edit_company' c.pk as edit_url %}
       <div class="card-own">
-        {% include "catalog/_card.html" with href=card_url name=c.name subtitle=c.description rating=c.rating_value count=c.rating_count cover=c.cover %}
+        {% include "catalog/_card.html" with href=card_url name=c.name subtitle=c.category.title rating=c.rating_value count=c.rating_count cover=c.cover %}
         <div class="card-actions">
           {% include "catalog/_edit_icon.html" %}
           <form class="card-del" method="post" action="{% url 'delete_listing' %}" data-confirm="Вы уверены, что хотите удалить компанию?">
