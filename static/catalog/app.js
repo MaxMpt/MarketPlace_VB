@@ -1,5 +1,16 @@
 (function () {
   const tg = window.Telegram && window.Telegram.WebApp;
+  function haptic(kind) {
+    var h = tg && tg.HapticFeedback;
+    if (!h) return;
+    try {
+      if (kind === "select" && h.selectionChanged) h.selectionChanged();
+      else if (kind === "success" && h.notificationOccurred) h.notificationOccurred("success");
+      else if (kind === "error" && h.notificationOccurred) h.notificationOccurred("error");
+      else if (kind === "warning" && h.notificationOccurred) h.notificationOccurred("warning");
+      else if (h.impactOccurred) h.impactOccurred(kind || "light");
+    } catch (err) {}
+  }
   if (tg && tg.ready) tg.ready();
   const user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
   const payload = user && user.id
@@ -111,11 +122,13 @@
         .then(function (data) {
           btn.dataset.busy = "";
           if (!data.ok) {
+            haptic("error");
             var fail = "Не удалось поделиться. Откройте мини-приложение из бота.";
             if (tg && tg.showAlert) tg.showAlert(fail);
             else alert(fail);
             return;
           }
+          haptic("success");
           var chat = data.bot ? ("https://t.me/" + data.bot) : "";
           var okMsg = "Карточка отправлена вам в чат с ботом. Перешлите её кому нужно.";
           if (tg && tg.showAlert) tg.showAlert(okMsg);
@@ -126,6 +139,7 @@
         })
         .catch(function () {
           btn.dataset.busy = "";
+          haptic("error");
           if (tg && tg.showAlert) tg.showAlert("Не удалось поделиться");
           else alert("Не удалось поделиться");
         });
@@ -176,6 +190,7 @@
   });
 
   function askConfirm(msg, cb) {
+    haptic("warning");
     var wrap = document.createElement("div");
     wrap.className = "confirm-mask";
     wrap.innerHTML = '<div class="confirm-box"><p></p><div class="confirm-actions"><button type="button" data-no>Отмена</button><button type="button" data-yes>Да</button></div></div>';
@@ -218,7 +233,6 @@
     cats.querySelectorAll("a").forEach(function (a) {
       a.addEventListener("click", function (e) {
         e.preventDefault();
-        if (tg && tg.HapticFeedback && tg.HapticFeedback.impactOccurred) tg.HapticFeedback.impactOccurred("light");
         cats.querySelectorAll("a").forEach(function (x) { x.classList.toggle("chip-on", x === a); });
         fetch(a.href, { headers: { "X-Requested-With": "XMLHttpRequest" } })
           .then(function (r) { return r.text(); })
@@ -260,6 +274,7 @@
     var img = e.target.closest("[data-zoom]");
     if (!img || !img.getAttribute("src")) return;
     e.preventDefault();
+    haptic("light");
     var box = document.createElement("div");
     box.className = "lightbox";
     var full = document.createElement("img");
@@ -267,12 +282,6 @@
     box.appendChild(full);
     box.addEventListener("click", function () { box.remove(); });
     document.body.appendChild(box);
-  });
-
-  document.querySelectorAll(".app-nav a").forEach(function (a) {
-    a.addEventListener("click", function () {
-      if (tg && tg.HapticFeedback && tg.HapticFeedback.selectionChanged) tg.HapticFeedback.selectionChanged();
-    });
   });
 
   document.querySelectorAll("form.review-form").forEach(function (form) {
@@ -293,39 +302,40 @@
       if (!box) return;
       var open = box.hidden;
       box.hidden = !open;
+      haptic("select");
       btn.textContent = open ? "Свернуть" : (btn.getAttribute("data-more") || "Развернуть");
     });
   });
 
-  var hideBar = document.querySelector(".js-hide-bar");
-  var scroller = document.querySelector(".app-scroll") || document.querySelector(".app-main");
-  if (hideBar && scroller) {
-    var lastY = 0;
-    var ticking = false;
-    var hidden = false;
-    scroller.addEventListener("scroll", function () {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(function () {
-        ticking = false;
-        var y = Math.max(0, scroller.scrollTop);
-        var dy = y - lastY;
-        lastY = y;
-        if (y < 16) {
-          if (hidden) {
-            hideBar.classList.remove("is-hidden");
-            hidden = false;
-          }
-          return;
-        }
-        if (dy > 12 && !hidden) {
-          hideBar.classList.add("is-hidden");
-          hidden = true;
-        } else if (dy < -12 && hidden) {
-          hideBar.classList.remove("is-hidden");
-          hidden = false;
-        }
-      });
-    }, { passive: true });
-  }
+  document.addEventListener("pointerdown", function (e) {
+    if (e.button && e.button !== 0) return;
+    var t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest("input:not([type=radio]):not([type=checkbox]), textarea, select")) return;
+    var hit = t.closest("a, button, [role=button], .switch, .card, .market-card, .today-card, .review, .shortcuts a");
+    if (!hit || hit.disabled) return;
+    if (hit.closest(".app-nav")) { haptic("select"); return; }
+    if (hit.closest(".chips") || hit.classList.contains("chip-opt")) { haptic("select"); return; }
+    if (hit.closest(".stars") || hit.closest(".star-pick")) { haptic("select"); return; }
+    if (hit.classList.contains("switch")) { haptic("soft"); return; }
+    if (hit.closest(".cat-move")) { haptic("rigid"); return; }
+    if (hit.closest(".card-del") || hit.classList.contains("del") || hit.hasAttribute("data-yes")) {
+      haptic("heavy");
+      return;
+    }
+    if (hit.hasAttribute("data-no")) { haptic("light"); return; }
+    if (hit.classList.contains("btn") || hit.classList.contains("btn-contact") || hit.classList.contains("btn-support") || hit.classList.contains("cat-btn")) {
+      haptic("medium");
+      return;
+    }
+    if (hit.classList.contains("btn-share") || hit.classList.contains("icon-btn") || hit.classList.contains("edit-btn")) {
+      haptic("light");
+      return;
+    }
+    if (hit.classList.contains("card") || hit.classList.contains("market-card") || hit.classList.contains("today-card") || hit.classList.contains("review") || hit.closest(".shortcuts")) {
+      haptic("soft");
+      return;
+    }
+    haptic("light");
+  }, { passive: true });
 })();

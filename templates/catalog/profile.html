@@ -27,6 +27,13 @@
     {% if highlight.snippet %}<p class="today-text">{{ highlight.snippet }}</p>{% endif %}
   </a>
   {% endif %}
+  {% if highlight_stats %}
+  <p class="hl-status">
+    {{ highlight_stats.today|date:"d.m" }} · постов {{ highlight_stats.posts_today }} · с реакциями {{ highlight_stats.reacted_today }}
+    {% if not highlight_stats.webhook_ok %} · вебхук не подключен{% endif %}
+    {% if highlight_stats.webhook_error %} · {{ highlight_stats.webhook_error }}{% endif %}
+  </p>
+  {% endif %}
   <form method="post" action="{% url 'refresh_highlight' %}" class="hl-refresh">
     {% csrf_token %}
     <button type="submit" class="btn">Получить актуальное сообщение</button>
@@ -49,7 +56,7 @@
     </div>
     <button type="submit" class="switch {% if theme == 'dark' %}on{% endif %}" role="switch" aria-checked="{% if theme == 'dark' %}true{% else %}false{% endif %}"></button>
   </form>
-  <form class="settings" method="post" action="{% url 'toggle_notify' %}" style="margin-top:.75rem">
+  <form class="settings" method="post" action="{% url 'toggle_notify' %}">
     {% csrf_token %}
     <div>
       <p>Уведомления в боте</p>

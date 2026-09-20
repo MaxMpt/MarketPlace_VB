@@ -1,24 +1,38 @@
 <div class="cat-list">
   {% for c in cats %}
   <div class="cat-item">
-    <form method="post" class="cat-rename">
+    <form method="post" class="cat-move" id="cat-move-{{ kind }}-{{ c.pk }}">
       {% csrf_token %}
       <input type="hidden" name="kind" value="{{ kind }}">
-      <input type="hidden" name="action" value="rename">
+      <input type="hidden" name="action" value="move">
       <input type="hidden" name="pk" value="{{ c.pk }}">
-      <label class="cat-field">
-        <span>Название</span>
-        <input name="title" value="{{ c.title }}" maxlength="64" required>
-      </label>
-      <button type="submit" class="cat-btn save">Сохранить</button>
+      <button type="submit" name="dir" value="up" aria-label="Выше" {% if forloop.first %}disabled{% endif %}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 14l6-6 6 6"/></svg>
+      </button>
+      <button type="submit" name="dir" value="down" aria-label="Ниже" {% if forloop.last %}disabled{% endif %}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 10l6 6 6-6"/></svg>
+      </button>
     </form>
-    <form method="post" class="cat-remove" data-confirm="Скрыть категорию «{{ c.title }}»? Объявления в ней останутся.">
-      {% csrf_token %}
-      <input type="hidden" name="kind" value="{{ kind }}">
-      <input type="hidden" name="action" value="delete">
-      <input type="hidden" name="pk" value="{{ c.pk }}">
-      <button type="submit" class="cat-btn del">Удалить</button>
-    </form>
+    <div class="cat-body">
+      <form method="post" class="cat-rename">
+        {% csrf_token %}
+        <input type="hidden" name="kind" value="{{ kind }}">
+        <input type="hidden" name="action" value="rename">
+        <input type="hidden" name="pk" value="{{ c.pk }}">
+        <label class="cat-field">
+          <span>Название</span>
+          <input name="title" value="{{ c.title }}" maxlength="64" required>
+        </label>
+        <button type="submit" class="cat-btn save">Сохранить</button>
+      </form>
+      <form method="post" class="cat-remove" data-confirm="Скрыть категорию «{{ c.title }}»? Объявления в ней останутся.">
+        {% csrf_token %}
+        <input type="hidden" name="kind" value="{{ kind }}">
+        <input type="hidden" name="action" value="delete">
+        <input type="hidden" name="pk" value="{{ c.pk }}">
+        <button type="submit" class="cat-btn del">Удалить</button>
+      </form>
+    </div>
   </div>
   {% empty %}
   <p class="empty">Категорий пока нет — добавьте первую ниже.</p>

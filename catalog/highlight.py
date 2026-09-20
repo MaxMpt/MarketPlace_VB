@@ -72,6 +72,8 @@ def _ensure_post(chat: dict, message_id: int, day, **fields) -> ChatPost:
     if not created:
         changed = []
         for key, value in defaults.items():
+            if key == "day":
+                continue
             if value and getattr(post, key) != value:
                 setattr(post, key, value)
                 changed.append(key)
@@ -80,9 +82,29 @@ def _ensure_post(chat: dict, message_id: int, day, **fields) -> ChatPost:
     return post
 
 
+def _media_label(msg: dict) -> str:
+    if msg.get("photo"):
+        return "Фото"
+    if msg.get("video") or msg.get("video_note"):
+        return "Видео"
+    if msg.get("animation"):
+        return "GIF"
+    if msg.get("document"):
+        return "Файл"
+    if msg.get("voice") or msg.get("audio"):
+        return "Аудио"
+    if msg.get("sticker"):
+        return "Стикер"
+    return ""
+
+
 def save_group_message(msg: dict) -> None:
     chat = msg.get("chat") or {}
-    if not _is_group(chat.get("id")):
+    chat_id = chat.get("id")
+    if chat.get("type") in {"group", "supergroup"} and not _is_group(chat_id):
+        print("highlight skip chat", chat_id, "expected", group_id(), flush=True)
+        return
+    if not _is_group(chat_id):
         return
     if msg.get("from", {}).get("is_bot"):
         return
@@ -101,22 +123,23 @@ def save_group_message(msg: dict) -> None:
     mid = msg.get("message_id")
     if not mid:
         return
-    text = _text(msg)
-    file_id = _photo_file_id(msg)
-    if not text and not file_id:
+    text = _text(msg) or _media_label(msg)
+    if not text:
         return
-    post = _ensure_post(
+    _ensure_post(
         chat,
         mid,
         _day_from_unix(msg.get("date")),
         author_name=_author(msg),
         text=text,
     )
+    print("highlight saved message", mid, "day", _day_from_unix(msg.get("date")), flush=True)
 
 
 def save_reaction_count(payload: dict) -> None:
     chat = payload.get("chat") or {}
     if not _is_group(chat.get("id")):
+        print("highlight skip count chat", chat.get("id"), "expected", group_id(), flush=True)
         return
     mid = payload.get("message_id")
     if not mid:
@@ -127,10 +150,15 @@ def save_reaction_count(payload: dict) -> None:
             total += int(item.get("total_count") or 0)
         except (TypeError, ValueError):
             pass
-    post = _ensure_post(chat, mid, _day_from_unix(payload.get("date")))
+    try:
+        post = ChatPost.objects.get(chat_id=int(chat["id"]), message_id=int(mid))
+    except ChatPost.DoesNotExist:
+        print("highlight count unknown message", mid, flush=True)
+        return
     if post.reaction_count != total:
         post.reaction_count = total
         post.save(update_fields=["reaction_count", "updated_at"])
+    print("highlight count", mid, total, "day", post.day, flush=True)
 
 
 def save_user_reaction(payload: dict) -> None:
@@ -150,14 +178,23 @@ def save_user_reaction(payload: dict) -> None:
         ChatReaction.objects.get_or_create(
             chat_id=chat_id, message_id=mid, user_id=uid, emoji=str(emoji)[:64]
         )
-    total = ChatReaction.objects.filter(chat_id=chat_id, message_id=mid).count()
-    post = _ensure_post(chat, mid, _day_from_unix(payload.get("date")))
-    if post.reaction_count != total:
-        post.reaction_count = total
+    try:
+        post = ChatPost.objects.get(chat_id=chat_id, message_id=int(mid))
+    except ChatPost.DoesNotExist:
+        return
+    seen = ChatReaction.objects.filter(chat_id=chat_id, message_id=mid).count()
+    if seen > post.reaction_count:
+        post.reaction_count = seen
         post.save(update_fields=["reaction_count", "updated_at"])
 
 
 REFRESH = timedelta(hours=2)
+
+
+def _today_posts():
+    gid = group_id()
+    today = timezone.localdate()
+    return ChatPost.objects.filter(chat_id=gid, day=today, is_demo=False)
 
 
 def today_highlight(force=False):
@@ -173,12 +210,18 @@ def today_highlight(force=False):
         and snap.post_id
         and snap.post
         and not snap.post.is_demo
+        and snap.post.day == today
         and snap.computed_at
         and now - snap.computed_at < REFRESH
     ):
         return snap.post
-    qs = ChatPost.objects.filter(chat_id=gid, day=today, is_demo=False, reaction_count__gte=1)
-    winner = qs.order_by("-reaction_count", "-message_id").first()
+    winner = (
+        _today_posts()
+        .filter(reaction_count__gte=1)
+        .exclude(text="")
+        .order_by("-reaction_count", "-message_id")
+        .first()
+    )
     HighlightSnapshot.objects.update_or_create(
         day=today, defaults={"post": winner, "computed_at": now}
     )
@@ -187,13 +230,35 @@ def today_highlight(force=False):
 
 def drop_demo_highlights() -> int:
     deleted, _ = ChatPost.objects.filter(is_demo=True).delete()
-    HighlightSnapshot.objects.all().delete()
+    HighlightSnapshot.objects.filter(day=timezone.localdate()).delete()
     return deleted
 
 
 def refresh_today_highlight():
+    from .notify import set_telegram_webhook
+
     drop_demo_highlights()
+    set_telegram_webhook()
     return today_highlight(force=True)
+
+
+def highlight_stats() -> dict:
+    from .notify import webhook_info
+
+    today = timezone.localdate()
+    posts = _today_posts()
+    info = webhook_info()
+    expected = (settings.MINI_APP_URL or "").rstrip("/") + "/telegram/webhook/"
+    return {
+        "today": today,
+        "posts_today": posts.count(),
+        "reacted_today": posts.filter(reaction_count__gte=1).exclude(text="").count(),
+        "group_id": group_id(),
+        "webhook_url": info.get("url") or "",
+        "webhook_ok": bool(info.get("url")) and info.get("url").rstrip("/") == expected.rstrip("/"),
+        "webhook_error": info.get("last_error") or "",
+        "webhook_pending": info.get("pending") or 0,
+    }
 
 
 def _download_photo(pk: int, file_id: str) -> None:

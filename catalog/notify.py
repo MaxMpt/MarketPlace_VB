@@ -6,16 +6,18 @@ import urllib.request
 from django.conf import settings
 
 
-def _bot_api(method: str, payload: dict, timeout: int = 8) -> dict:
+def _bot_api(method: str, payload: dict | None = None, timeout: int = 8) -> dict:
     token = settings.TELEGRAM_BOT_TOKEN
     if not token:
         return {}
-    data = urllib.parse.urlencode(payload).encode()
-    req = urllib.request.Request(f"https://api.telegram.org/bot{token}/{method}", data=data)
+    url = f"https://api.telegram.org/bot{token}/{method}"
+    data = urllib.parse.urlencode(payload or {}).encode() if payload else None
+    req = urllib.request.Request(url, data=data)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode())
-    except Exception:
+    except Exception as exc:
+        print("bot_api", method, exc, flush=True)
         return {}
 
 
@@ -82,7 +84,7 @@ def send_share_card(chat_id, photo_url: str, caption: str, button_url: str) -> b
     return bool(result.get("ok"))
 
 
-def set_telegram_webhook() -> None:
+def set_telegram_webhook():
     url = (settings.MINI_APP_URL or "").rstrip("/") + "/telegram/webhook/"
     if not url.startswith("https://"):
         print("setWebhook skipped, MINI_APP_URL is not https:", settings.MINI_APP_URL, flush=True)
@@ -103,6 +105,16 @@ def set_telegram_webhook() -> None:
         timeout=10,
     )
     print("setWebhook", url, result, flush=True)
+    return result
+
+
+def webhook_info() -> dict:
+    info = (_bot_api("getWebhookInfo") or {}).get("result") or {}
+    return {
+        "url": info.get("url") or "",
+        "pending": int(info.get("pending_update_count") or 0),
+        "last_error": info.get("last_error_message") or "",
+    }
 
 
 def delete_telegram_webhook() -> None:

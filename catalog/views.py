@@ -23,7 +23,7 @@ from .models import (
     UserSettings,
 )
 from .notify import is_admin, login_of, notify_admins, send_share_card, send_telegram, stars_word
-from .highlight import refresh_today_highlight, save_group_message, save_reaction_count, save_user_reaction, today_highlight
+from .highlight import highlight_stats, refresh_today_highlight, save_group_message, save_reaction_count, save_user_reaction, today_highlight
 from .utils import listing_share, parse_price_input, save_resized_image, telegram_contact_url
 
 
@@ -262,6 +262,7 @@ def profile(request):
             "notify_reviews": prefs.notify_reviews,
             "support_url": "https://t.me/ima_ecosystem?direct",
             "highlight": today_highlight() if admin else None,
+            "highlight_stats": highlight_stats() if admin else None,
         },
     )
 
@@ -271,16 +272,27 @@ def refresh_highlight(request):
     if not is_admin(request.resident):
         return redirect("profile")
     winner = refresh_today_highlight()
+    stats = highlight_stats()
+    day = stats["today"].strftime("%d.%m")
     if winner:
         text = winner.snippet or "сообщение из группы"
         messages.success(
             request,
-            f"На главной: «{text}» · ❤ {winner.reaction_count}",
+            f"На главной: «{text}» · ❤ {winner.reaction_count}. Постов за {day}: {stats['posts_today']}.",
         )
     else:
+        err = stats["webhook_error"]
+        if not stats["webhook_ok"]:
+            hint = "Вебхук не совпадает с MINI_APP_URL — бот не получает чат."
+        elif err:
+            hint = f"Ошибка вебхука: {err}"
+        elif stats["posts_today"] == 0:
+            hint = "Бот не видел сообщений группы за сегодня. Нужны новые посты после этого обновления."
+        else:
+            hint = "Посты есть, но без реакций."
         messages.info(
             request,
-            "За сегодня нет сообщений с реакциями. Поставьте реакцию в группе — блок появится на главной.",
+            f"{day}: постов {stats['posts_today']}, с реакциями {stats['reacted_today']}. {hint}",
         )
     return redirect("profile")
 
@@ -677,8 +689,20 @@ def manage_categories(request):
             item = get_object_or_404(model.objects.alive(), pk=request.POST.get("pk"))
             item.deleted_at = timezone.now()
             item.save(update_fields=["deleted_at"])
+        elif action == "move":
+            item = get_object_or_404(model.objects.alive(), pk=request.POST.get("pk"))
+            rows = list(model.objects.alive())
+            idx = next((i for i, row in enumerate(rows) if row.pk == item.pk), -1)
+            swap = idx - 1 if request.POST.get("dir") == "up" else idx + 1
+            if idx >= 0 and 0 <= swap < len(rows):
+                rows[idx], rows[swap] = rows[swap], rows[idx]
+                for n, row in enumerate(rows):
+                    order = n * 10
+                    if row.sort_order != order:
+                        row.sort_order = order
+                        row.save(update_fields=["sort_order"])
         if not error and request.method == "POST":
-            return redirect("manage_categories")
+            return redirect(f"/manage/categories/#cat-{kind}")
     return render(
         request,
         "catalog/manage_categories.html",

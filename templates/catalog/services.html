@@ -4,15 +4,12 @@
 <div class="pad place-btn">
   <a class="btn" href="{% url 'add' %}">+ Разместить объявление</a>
 </div>
-<div class="sticky-bar js-hide-bar">
-  <div class="chips js-cats">
-    <a class="{% if not active_cat %}chip-on{% endif %}" href="{% url 'services' %}">Все</a>
-    {% for c in categories %}
-      <a class="{% if active_cat == c.slug %}chip-on{% endif %}" href="{% url 'services' %}?cat={{ c.slug }}">{{ c.title }}</a>
-    {% endfor %}
-  </div>
+<div class="chips js-cats">
+  <a class="{% if not active_cat %}chip-on{% endif %}" href="{% url 'services' %}">Все</a>
+  {% for c in categories %}
+    <a class="{% if active_cat == c.slug %}chip-on{% endif %}" href="{% url 'services' %}?cat={{ c.slug }}">{{ c.title }}</a>
+  {% endfor %}
 </div>
-<div class="app-scroll">
 <div class="stack pad js-cards">
   {% for s in services %}
     {% url 'service_detail' s.pk as card_url %}
@@ -24,6 +21,5 @@
   {% empty %}
     <p class="empty">В этой категории пока пусто.</p>
   {% endfor %}
-</div>
 </div>
 {% endblock %}

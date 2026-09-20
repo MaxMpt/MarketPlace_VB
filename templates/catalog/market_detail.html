@@ -13,7 +13,11 @@
   </div>
   <p class="price">{{ item.price_label }}</p>
   {% if item.description %}<p class="lead">{{ item.description }}</p>{% endif %}
+  {% if item.create_user_id == resident.id %}
   <p class="muted tiny">Объявление снимется {{ item.expires_at|date:"d.m.Y" }} — через 60 дней после публикации.</p>
+  {% else %}
+  <p class="muted tiny">Дата актуальности {{ item.expires_at|date:"d.m.Y" }}</p>
+  {% endif %}
   {% include "catalog/_contact.html" with author=item.create_user %}
   {% if item.create_user_id == resident.id %}
     <form method="post" action="{% url 'delete_listing' %}" data-confirm="Вещь продана? Объявление исчезнет из барахолки.">
