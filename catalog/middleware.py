@@ -19,6 +19,12 @@ class ResidentMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        if request.path.startswith("/telegram/webhook"):
+            request.resident = None
+            request.theme = "light"
+            request.is_admin = False
+            request.tg_real = False
+            return self.get_response(request)
         data = self._identity(request) or FALLBACK
         resident, _ = Resident.objects.update_or_create(
             id=int(data["id"]),

@@ -938,36 +938,44 @@ def telegram_webhook(request):
     if request.method != "POST":
         return HttpResponse("ok")
     try:
-        data = json.loads(request.body.decode() or "{}")
-    except json.JSONDecodeError:
+        raw = request.body.decode("utf-8", errors="ignore") or "{}"
+        data = json.loads(raw)
+    except Exception as exc:
+        print("webhook json", exc, flush=True)
         return HttpResponse("ok")
-    msg = data.get("message") or data.get("edited_message") or {}
-    text = msg.get("text") or ""
-    chat = msg.get("chat") or {}
-    chat_id = chat.get("id")
-    chat_type = chat.get("type") or ""
-    if chat_id and chat_type == "private" and text.startswith("/start"):
-        from .notify import send_start_card
+    try:
+        msg = data.get("message") or data.get("edited_message") or {}
+        text = msg.get("text") or ""
+        chat = msg.get("chat") or {}
+        chat_id = chat.get("id")
+        chat_type = chat.get("type") or ""
+        if chat_id and chat_type == "private" and text.startswith("/start"):
+            from .notify import send_start_card
 
-        print("webhook /start from", chat_id, flush=True)
-        send_start_card(chat_id)
-    if msg:
-        try:
-            save_group_message(msg)
-        except Exception as exc:
-            print("highlight message", exc, flush=True)
-    counts = data.get("message_reaction_count")
-    if counts:
-        try:
-            save_reaction_count(counts)
-        except Exception as exc:
-            print("highlight counts", exc, flush=True)
-    reaction = data.get("message_reaction")
-    if reaction:
-        try:
-            save_user_reaction(reaction)
-        except Exception as exc:
-            print("highlight reaction", exc, flush=True)
+            print("webhook /start from", chat_id, flush=True)
+            try:
+                send_start_card(chat_id)
+            except Exception as exc:
+                print("webhook start", exc, flush=True)
+        if msg:
+            try:
+                save_group_message(msg)
+            except Exception as exc:
+                print("highlight message", exc, flush=True)
+        counts = data.get("message_reaction_count")
+        if counts:
+            try:
+                save_reaction_count(counts)
+            except Exception as exc:
+                print("highlight counts", exc, flush=True)
+        reaction = data.get("message_reaction")
+        if reaction:
+            try:
+                save_user_reaction(reaction)
+            except Exception as exc:
+                print("highlight reaction", exc, flush=True)
+    except Exception as exc:
+        print("webhook", exc, flush=True)
     return HttpResponse("ok")
 
 

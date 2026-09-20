@@ -235,10 +235,15 @@ def drop_demo_highlights() -> int:
 
 
 def refresh_today_highlight():
-    from .notify import set_telegram_webhook
+    from .notify import set_telegram_webhook, webhook_info
+    from django.conf import settings as dj
 
     drop_demo_highlights()
-    set_telegram_webhook()
+    expected = (dj.MINI_APP_URL or "").rstrip("/") + "/telegram/webhook/"
+    info = webhook_info()
+    current = (info.get("url") or "").rstrip("/")
+    if current != expected.rstrip("/"):
+        set_telegram_webhook()
     return today_highlight(force=True)
 
 

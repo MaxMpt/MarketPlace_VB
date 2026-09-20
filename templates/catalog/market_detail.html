@@ -16,7 +16,7 @@
   {% if item.create_user_id == resident.id %}
   <p class="muted tiny">Объявление снимется {{ item.expires_at|date:"d.m.Y" }} — через 60 дней после публикации.</p>
   {% else %}
-  <p class="muted tiny">Дата актуальности {{ item.expires_at|date:"d.m.Y" }}</p>
+  <p class="muted tiny">Дата актуальности {{ item.created_at|date:"d.m.Y" }}</p>
   {% endif %}
   {% include "catalog/_contact.html" with author=item.create_user %}
   {% if item.create_user_id == resident.id %}
