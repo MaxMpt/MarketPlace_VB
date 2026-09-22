@@ -45,6 +45,19 @@ def rotate_saved_image(django_file, degrees: int = 90) -> ContentFile:
     return ContentFile(buf.getvalue(), name=name)
 
 
+def normalize_phone(raw: str) -> str:
+    digits = re.sub(r"\D", "", raw or "")
+    if len(digits) == 11 and digits.startswith("8"):
+        digits = "7" + digits[1:]
+    if len(digits) == 10:
+        digits = "7" + digits
+    if not digits.startswith("7") and len(digits) < 11:
+        return ""
+    if len(digits) < 11 or len(digits) > 15:
+        return ""
+    return "+" + digits
+
+
 def parse_price_input(raw: str):
     text = (raw or "").strip()
     if not text:
