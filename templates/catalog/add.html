@@ -37,6 +37,11 @@
     </div>
     <label class="label" for="mprice">Цена</label>
     <input id="mprice" name="price_note" maxlength="40" placeholder="3200 или Договорная">
+    {% if need_phone %}
+    <label class="label" for="phone">Номер для связи</label>
+    <input id="phone" name="phone" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="+7 900 000-00-00" value="{{ saved_phone }}" required>
+    <p class="muted tiny">В Telegram нет username, поэтому соседи смогут только позвонить.</p>
+    {% endif %}
     <p class="muted tiny" style="margin-top:.75rem">Публикуя, вы соглашаетесь: карточка барахолки автоматически удалится через 60 дней.</p>
   </div>
 

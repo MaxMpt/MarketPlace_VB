@@ -1,0 +1,22 @@
+{% if is_admin %}
+<form class="accent-form" method="post" action="{% url 'set_accent' %}">
+  {% csrf_token %}
+  <input type="hidden" name="kind" value="{{ kind }}">
+  <input type="hidden" name="pk" value="{{ item.pk }}">
+  <p class="label">Акцент до даты</p>
+  <p class="muted tiny">Платная карточка будет первой в своей категории, пока не истечёт срок.</p>
+  <div class="accent-picks">
+    <label class="accent-pick accent-gold {% if item.accent_color == 'gold' %}on{% endif %}"><input type="radio" name="accent_color" value="gold" {% if item.accent_color == 'gold' %}checked{% endif %}> Золото</label>
+    <label class="accent-pick accent-blue {% if item.accent_color == 'blue' %}on{% endif %}"><input type="radio" name="accent_color" value="blue" {% if item.accent_color == 'blue' %}checked{% endif %}> Синий</label>
+    <label class="accent-pick accent-green {% if item.accent_color == 'green' %}on{% endif %}"><input type="radio" name="accent_color" value="green" {% if item.accent_color == 'green' %}checked{% endif %}> Зелёный</label>
+    <label class="accent-pick accent-pink {% if item.accent_color == 'pink' %}on{% endif %}"><input type="radio" name="accent_color" value="pink" {% if item.accent_color == 'pink' %}checked{% endif %}> Розовый</label>
+  </div>
+  <input class="accent-date" type="date" name="until" value="{{ item.accent_until|date:'Y-m-d' }}" required>
+  <div class="accent-actions">
+    <button class="btn" type="submit">Поставить акцент</button>
+    {% if item.accent_color %}
+    <button class="btn ghost" type="submit" name="clear" value="1" formnovalidate>Снять</button>
+    {% endif %}
+  </div>
+</form>
+{% endif %}

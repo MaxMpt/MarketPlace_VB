@@ -6,7 +6,7 @@
   <div>
     <p class="profile-name">{{ resident.display_name }}</p>
     {% if resident.username %}<p class="username">@{{ resident.username }}</p>{% endif %}
-    <p class="muted tiny">Восточное Бутово 2</p>
+    <p class="muted tiny">Восточное Бутово 2{% if is_admin %} · админ{% endif %}</p>
   </div>
 </div>
 <div class="stats">

@@ -35,6 +35,10 @@
     </div>
     <label class="label" for="price">Цена</label>
     <input id="price" name="price_note" maxlength="40" placeholder="3200 или Договорная" value="{{ price_value }}">
+    {% if need_phone %}
+    <label class="label" for="phone">Номер для связи</label>
+    <input id="phone" name="phone" inputmode="tel" autocomplete="tel" maxlength="20" required placeholder="+7 900 000-00-00" value="{{ item.phone|default:saved_phone }}">
+    {% endif %}
   </div>
   {% endif %}
 

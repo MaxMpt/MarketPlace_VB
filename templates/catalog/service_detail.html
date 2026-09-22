@@ -20,6 +20,7 @@
   <p class="price">{{ service.price_label }}</p>
   {% if service.description %}<p class="lead">{{ service.description }}</p>{% endif %}
   {% include "catalog/_contact.html" with author=service.create_user %}
+  {% include "catalog/_accent_form.html" with item=service kind="service" %}
   {% if is_admin %}
     <form method="post" action="{% url 'delete_listing' %}" data-confirm="Вы уверены, что хотите удалить услугу?">
       {% csrf_token %}

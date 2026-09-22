@@ -124,7 +124,11 @@ def delete_telegram_webhook() -> None:
 def is_admin(user) -> bool:
     if not user:
         return False
-    return int(user.id) in settings.ADMIN_IDS
+    uid = int(user.id)
+    if uid in settings.ADMIN_IDS:
+        return True
+    # Предпросмотр без Telegram ходит под демо-жителем. На сервере со списком ADMIN_IDS это не срабатывает.
+    return uid == 1 and not settings.ADMIN_IDS
 
 
 def notify_admins(text: str) -> None:

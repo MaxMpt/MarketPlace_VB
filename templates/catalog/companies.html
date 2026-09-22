@@ -4,22 +4,59 @@
 <div class="pad place-btn">
   <a class="btn" href="{% url 'add' %}?kind=company">+ Создать рекомендацию</a>
 </div>
-<div class="chips js-cats">
-  <a class="{% if not active_cat %}chip-on{% endif %}" href="{% url 'companies' %}">Все</a>
+
+{% if active_category %}
+<div class="chips chips-stick">
+  <a href="{% url 'companies' %}">Все</a>
   {% for c in categories %}
-    <a class="{% if active_cat == c.slug %}chip-on{% endif %}" href="{% url 'companies' %}?cat={{ c.slug }}">{{ c.title }}</a>
+    <a class="{% if c.pk == active_category.pk %}chip-on{% endif %}" href="{% url 'companies' %}?cat={{ c.slug }}">{{ c.title }}</a>
   {% endfor %}
 </div>
-<div class="stack pad js-cards">
+<div class="market-grid">
   {% for c in companies %}
     {% url 'company_detail' c.pk as card_url %}
     {% url 'edit_company' c.pk as edit_url %}
-    <div class="{% if c.create_user_id == resident.id or is_admin %}card-own{% endif %}">
-      {% include "catalog/_card.html" with href=card_url name=c.name subtitle=c.category.title rating=c.rating_value count=c.rating_count cover=c.cover %}
-      {% if c.create_user_id == resident.id or is_admin %}{% include "catalog/_edit_icon.html" %}{% endif %}
-    </div>
+    {% if c.create_user_id == resident.id or is_admin %}
+      {% include "catalog/_tile.html" with wrap="grid-item" href=card_url name=c.name description=c.description cover=c.cover rating=c.rating_value count=c.rating_count accent=c.accent_key can_edit=1 %}
+    {% else %}
+      {% include "catalog/_tile.html" with wrap="grid-item" href=card_url name=c.name description=c.description cover=c.cover rating=c.rating_value count=c.rating_count accent=c.accent_key %}
+    {% endif %}
   {% empty %}
-    <p class="empty">В этой категории пока пусто.</p>
+    <p class="empty" style="grid-column:1/-1">В этой категории пока пусто.</p>
   {% endfor %}
 </div>
+
+{% else %}
+<div class="chips js-cats chips-stick">
+  <a class="chip-on" href="#all" data-slug="">Все</a>
+  {% for c in categories %}
+    <a href="#cat-{{ c.slug }}" data-slug="{{ c.slug }}">{{ c.title }}</a>
+  {% endfor %}
+</div>
+<div class="cat-rails js-cards">
+  {% regroup companies by category as groups %}
+  {% for group in groups %}
+  <section class="cat-rail" {% if group.grouper %}id="cat-{{ group.grouper.slug }}" data-slug="{{ group.grouper.slug }}"{% endif %}>
+    {% if group.grouper %}
+      <a class="cat-rail-title" href="{% url 'companies' %}?cat={{ group.grouper.slug }}">{{ group.grouper.title }}<small>все</small></a>
+    {% else %}
+      <h3>Без категории</h3>
+    {% endif %}
+    <div class="rail">
+      {% for c in group.list %}
+        {% url 'company_detail' c.pk as card_url %}
+        {% url 'edit_company' c.pk as edit_url %}
+        {% if c.create_user_id == resident.id or is_admin %}
+          {% include "catalog/_tile.html" with wrap="rail-item" href=card_url name=c.name description=c.description cover=c.cover rating=c.rating_value count=c.rating_count accent=c.accent_key can_edit=1 %}
+        {% else %}
+          {% include "catalog/_tile.html" with wrap="rail-item" href=card_url name=c.name description=c.description cover=c.cover rating=c.rating_value count=c.rating_count accent=c.accent_key %}
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+  {% empty %}
+  <p class="empty">В этой категории пока пусто.</p>
+  {% endfor %}
+</div>
+{% endif %}
 {% endblock %}

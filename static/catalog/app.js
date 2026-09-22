@@ -81,14 +81,22 @@
     const dark = document.documentElement.classList.contains("dark");
     if (tg.setHeaderColor) tg.setHeaderColor(dark ? "#1c1c1e" : "#ffffff");
     if (tg.setBackgroundColor) tg.setBackgroundColor(dark ? "#000000" : "#ffffff");
-    const apply = function () {
+    var lockedH = 0;
+    var safeLocked = false;
+    const apply = function (ev) {
+      if (ev && ev.isStateStable === false) return;
       if (tg.isExpanded === false) tg.expand();
-      const h = tg.viewportStableHeight || (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-      document.documentElement.style.setProperty("--app-height", Math.round(h) + "px");
+      var next = Math.round(tg.viewportStableHeight || window.innerHeight || 0);
+      if (!lockedH) lockedH = next;
+      else if (Math.abs(next - lockedH) < 72) next = lockedH;
+      else lockedH = next;
+      document.documentElement.style.setProperty("--app-height", next + "px");
+      if (safeLocked) return;
       const top = (tg.contentSafeAreaInset && tg.contentSafeAreaInset.top) || (tg.safeAreaInset && tg.safeAreaInset.top) || 0;
       const bottom = (tg.safeAreaInset && tg.safeAreaInset.bottom) || 0;
       document.documentElement.style.setProperty("--tg-safe-top", top + "px");
       document.documentElement.style.setProperty("--tg-safe-bottom", bottom + "px");
+      if (top || bottom) safeLocked = true;
     };
     apply();
     if (tg.onEvent) {
@@ -223,13 +231,41 @@
 
   var cats = document.querySelector(".js-cats");
   var cards = document.querySelector(".js-cards");
-  function fillCards(html, url) {
-    var doc = new DOMParser().parseFromString(html, "text/html");
-    var next = doc.querySelector(".js-cards");
-    if (next && cards) cards.innerHTML = next.innerHTML;
-    if (url) history.pushState({ cat: true }, "", url);
+  var rails = document.querySelector(".cat-rails");
+  var scroller = document.querySelector(".app-main");
+  function markChip(a) {
+    if (!cats || !a || a.classList.contains("chip-on")) return;
+    cats.querySelectorAll("a").forEach(function (x) { x.classList.toggle("chip-on", x === a); });
+    var left = a.offsetLeft - (cats.clientWidth - a.offsetWidth) / 2;
+    cats.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
   }
-  if (cats && cards) {
+  function scrollToSlug(slug) {
+    if (!scroller) return;
+    if (!slug) {
+      scroller.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    var target = document.querySelector('.cat-rail[data-slug="' + (window.CSS && CSS.escape ? CSS.escape(slug) : slug) + '"]');
+    if (!target) return;
+    var chipsH = cats ? cats.offsetHeight : 0;
+    var top = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - chipsH + 1;
+    scroller.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+  }
+  if (cats && rails && scroller) {
+    cats.querySelectorAll("a").forEach(function (a) {
+      a.addEventListener("click", function (e) {
+        e.preventDefault();
+        markChip(a);
+        scrollToSlug(a.getAttribute("data-slug") || "");
+      });
+    });
+  } else if (cats && cards) {
+    function fillCards(html, url) {
+      var doc = new DOMParser().parseFromString(html, "text/html");
+      var next = doc.querySelector(".js-cards");
+      if (next && cards) cards.innerHTML = next.innerHTML;
+      if (url) history.pushState({ cat: true }, "", url);
+    }
     cats.querySelectorAll("a").forEach(function (a) {
       a.addEventListener("click", function (e) {
         e.preventDefault();

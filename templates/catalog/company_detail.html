@@ -26,6 +26,7 @@
     </div>
   {% endif %}
   {% include "catalog/_contact.html" with author=company.create_user %}
+  {% include "catalog/_accent_form.html" with item=company kind="company" %}
   {% if is_admin %}
     <form method="post" action="{% url 'delete_listing' %}" data-confirm="Вы уверены, что хотите удалить рекомендацию?">
       {% csrf_token %}

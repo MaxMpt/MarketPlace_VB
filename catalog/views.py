@@ -1,4 +1,4 @@
-from django.db.models import Prefetch
+from django.db.models import Case, IntegerField, Prefetch, Q, Value, When
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_POST
 from urllib.parse import quote
-from datetime import timedelta
+from datetime import datetime, timedelta
 import json
 
 from .models import (
@@ -24,7 +24,49 @@ from .models import (
 )
 from .notify import is_admin, login_of, notify_admins, send_share_card, send_telegram, stars_word
 from .highlight import highlight_stats, refresh_today_highlight, save_group_message, save_reaction_count, save_user_reaction, today_highlight
-from .utils import listing_share, parse_price_input, save_resized_image, telegram_contact_url
+from .utils import listing_share, normalize_phone, parse_price_input, save_resized_image, telegram_contact_url
+
+ACCENT_COLORS = ("gold", "blue", "green", "pink")
+
+
+def _promo(qs, grouped=True):
+    today = timezone.localdate()
+    qs = qs.annotate(
+        promoted=Case(
+            When(Q(accent_color__gt="") & Q(accent_until__gte=today), then=Value(0)),
+            default=Value(1),
+            output_field=IntegerField(),
+        )
+    )
+    if grouped:
+        return qs.order_by(
+            "category__sort_order", "category_id", "promoted", "-rating_value", "-rating_count", "id"
+        )
+    return qs.order_by("promoted", "-rating_value", "-rating_count", "id")
+
+
+def _saved_phone(resident):
+    if not resident or resident.username:
+        return ""
+    if resident.phone:
+        return resident.phone
+    prev = (
+        MarketItem.objects.filter(create_user=resident)
+        .exclude(phone="")
+        .order_by("-id")
+        .values_list("phone", flat=True)
+        .first()
+    )
+    if prev:
+        resident.phone = prev
+        resident.save(update_fields=["phone"])
+    return resident.phone or ""
+
+
+def _remember_phone(resident, phone):
+    if resident and phone and not resident.username and resident.phone != phone:
+        resident.phone = phone
+        resident.save(update_fields=["phone"])
 
 
 def _photos():
@@ -70,19 +112,19 @@ def home(request):
 
 def services_list(request):
     slug = request.GET.get("cat") or ""
-    qs = Service.objects.alive().select_related("category", "create_user").prefetch_related(_photos()).order_by(
-        "-rating_value", "-rating_count", "id"
-    )
-    if slug:
-        qs = qs.filter(category__slug=slug)
+    categories = ServiceCategory.objects.alive()
+    active = categories.filter(slug=slug).first() if slug else None
+    qs = Service.objects.alive().select_related("category", "create_user").prefetch_related(_photos())
+    qs = _promo(qs.filter(category=active), grouped=False) if active else _promo(qs)
     return render(
         request,
         "catalog/services.html",
         {
-            "categories": ServiceCategory.objects.alive(),
+            "categories": categories,
             "services": qs,
-            "active_cat": slug,
-            "title": "Услуги жителей",
+            "active_category": active,
+            "title": active.title if active else "Услуги жителей",
+            "back": "/services/" if active else "",
         },
     )
 
@@ -145,22 +187,19 @@ def service_detail(request, pk):
 
 def companies_list(request):
     slug = request.GET.get("cat") or ""
-    qs = (
-        Company.objects.alive()
-        .select_related("category", "create_user")
-        .prefetch_related(_photos())
-        .order_by("-rating_value", "-rating_count", "id")
-    )
-    if slug:
-        qs = qs.filter(category__slug=slug)
+    categories = CompanyCategory.objects.alive()
+    active = categories.filter(slug=slug).first() if slug else None
+    qs = Company.objects.alive().select_related("category", "create_user").prefetch_related(_photos())
+    qs = _promo(qs.filter(category=active), grouped=False) if active else _promo(qs)
     return render(
         request,
         "catalog/companies.html",
         {
-            "categories": CompanyCategory.objects.alive(),
+            "categories": categories,
             "companies": qs,
-            "active_cat": slug,
-            "title": "Рекомендации",
+            "active_category": active,
+            "title": active.title if active else "Рекомендации",
+            "back": "/companies/" if active else "",
         },
     )
 
@@ -226,6 +265,7 @@ def market_detail(request, pk):
             "photos": item.photos.alive(),
             "share": listing_share("market", item),
             "contact_url": _contact(request, item.create_user, item.name, "market"),
+            "phone": item.phone if not (item.create_user and item.create_user.username) else "",
             "is_admin": is_admin(request.resident),
             "title": item.name,
             "back": "/market/",
@@ -386,6 +426,36 @@ def delete_review(request):
     return redirect("profile")
 
 
+@require_POST
+def set_accent(request):
+    if not is_admin(request.resident):
+        return redirect("home")
+    kind = request.POST.get("kind")
+    model = Service if kind == "service" else Company if kind == "company" else None
+    if model is None:
+        return redirect("home")
+    item = get_object_or_404(model.objects.alive(), pk=request.POST.get("pk"))
+    back = f"/services/{item.pk}/" if kind == "service" else f"/companies/{item.pk}/"
+    if request.POST.get("clear"):
+        item.accent_color = ""
+        item.accent_until = None
+        item.save(update_fields=["accent_color", "accent_until"])
+        return redirect(back)
+    color = request.POST.get("accent_color") or ""
+    raw = (request.POST.get("until") or "").strip()
+    until = None
+    if raw:
+        try:
+            until = datetime.strptime(raw, "%Y-%m-%d").date()
+        except ValueError:
+            until = None
+    if color in ACCENT_COLORS and until:
+        item.accent_color = color
+        item.accent_until = until
+        item.save(update_fields=["accent_color", "accent_until"])
+    return redirect(back)
+
+
 def _need_telegram(request):
     if getattr(request, "tg_real", False):
         return ""
@@ -440,20 +510,28 @@ def add_listing(request):
                 except (MarketCategory.DoesNotExist, ValueError, TypeError):
                     error = "Выберите категорию"
                 else:
-                    cents, note = parse_price_input(price_note)
-                    item = MarketItem.objects.create(
-                        category=category,
-                        name=name,
-                        description=description,
-                        price_cents=cents,
-                        price_note=note,
-                        create_user=request.resident,
-                    )
-                    _save_photos(files, market=item)
-                    notify_admins(
-                        f"Новая вещь в барахолке «{item.name}» от {login_of(request.resident)}"
-                    )
-                    return redirect("market_detail", pk=item.pk)
+                    phone = ""
+                    if not request.resident.username:
+                        phone = normalize_phone(request.POST.get("phone") or "")
+                        if not phone:
+                            error = "Укажите номер для связи"
+                    if not error:
+                        cents, note = parse_price_input(price_note)
+                        _remember_phone(request.resident, phone)
+                        item = MarketItem.objects.create(
+                            category=category,
+                            name=name,
+                            description=description,
+                            price_cents=cents,
+                            price_note=note,
+                            phone=phone,
+                            create_user=request.resident,
+                        )
+                        _save_photos(files, market=item)
+                        notify_admins(
+                            f"Новая вещь в барахолке «{item.name}» от {login_of(request.resident)}"
+                        )
+                        return redirect("market_detail", pk=item.pk)
             else:
                 try:
                     company_cat = CompanyCategory.objects.alive().get(
@@ -489,6 +567,8 @@ def add_listing(request):
             "back": "/market/" if kind == "market" else "/companies/" if kind == "company" else "/services/",
             "error": error,
             "kind": kind,
+            "need_phone": not bool(getattr(request.resident, "username", "")),
+            "saved_phone": _saved_phone(request.resident),
         },
     )
 
@@ -598,7 +678,7 @@ def edit_company(request, pk):
 
 
 def edit_market(request, pk):
-    item = get_object_or_404(MarketItem.objects.alive().select_related("category"), pk=pk)
+    item = get_object_or_404(MarketItem.objects.alive().select_related("category", "create_user"), pk=pk)
     if not _can_edit(request.resident, item):
         return redirect("market_detail", pk=pk)
     error = ""
@@ -616,16 +696,25 @@ def edit_market(request, pk):
                 error = "Выберите категорию"
             else:
                 cents, note = parse_price_input(request.POST.get("price_note") or "")
-                item.category = category
-                item.name = name
-                item.description = description
-                item.price_cents = cents
-                item.price_note = note
-                item.save()
-                files = request.FILES.getlist("photos")[:6]
-                if files:
-                    _save_photos(files, market=item)
-                return redirect("market_detail", pk=item.pk)
+                phone = item.phone
+                author = item.create_user
+                if author and not author.username:
+                    phone = normalize_phone(request.POST.get("phone") or "")
+                    if not phone:
+                        error = "Укажите номер для связи"
+                if not error:
+                    item.category = category
+                    item.name = name
+                    item.description = description
+                    item.price_cents = cents
+                    item.price_note = note
+                    item.phone = phone
+                    item.save()
+                    _remember_phone(author, phone)
+                    files = request.FILES.getlist("photos")[:6]
+                    if files:
+                        _save_photos(files, market=item)
+                    return redirect("market_detail", pk=item.pk)
     return render(
         request,
         "catalog/edit.html",
@@ -636,6 +725,8 @@ def edit_market(request, pk):
             "price_value": _price_field(item),
             "photos": item.photos.filter(deleted_at__isnull=True).order_by("sort_order", "id"),
             "error": error,
+            "need_phone": not bool(item.create_user and item.create_user.username),
+            "saved_phone": _saved_phone(item.create_user),
             "title": "Изменить объявление",
             "back": f"/market/{item.pk}/",
         },

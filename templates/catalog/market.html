@@ -19,7 +19,9 @@
       <div class="market-card-body">
         <h3>{{ item.name }}</h3>
         <p>{{ item.description|default:"" }}</p>
-        <span class="market-price">{{ item.price_label }}</span>
+          <div class="tile-foot">
+            <span class="market-price">{{ item.price_label }}</span>
+          </div>
       </div>
     </a>
   {% empty %}

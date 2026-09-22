@@ -20,6 +20,7 @@ class Resident(models.Model):
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255, blank=True, default="")
     photo_url = models.TextField(blank=True, default="")
+    phone = models.CharField(max_length=20, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
@@ -84,6 +85,8 @@ class Company(models.Model):
     description = models.TextField(blank=True, default="")
     rating_value = models.DecimalField(max_digits=3, decimal_places=2, default=0)
     rating_count = models.IntegerField(default=0)
+    accent_color = models.CharField(max_length=8, blank=True, default="")
+    accent_until = models.DateField(null=True, blank=True)
     create_user = models.ForeignKey(
         Resident, null=True, blank=True, on_delete=models.SET_NULL, related_name="companies"
     )
@@ -152,6 +155,16 @@ class Company(models.Model):
             return f"https://yandex.ru/map-widget/v1/?text={q}&z=16"
         return ""
 
+    @property
+    def is_accent(self):
+        if not self.accent_color or not self.accent_until:
+            return False
+        return self.accent_until >= timezone.localdate()
+
+    @property
+    def accent_key(self):
+        return self.accent_color if self.is_accent else ""
+
     def __str__(self):
         return self.name
 
@@ -164,6 +177,8 @@ class Service(models.Model):
     price_note = models.CharField(max_length=64, blank=True, default="")
     rating_value = models.DecimalField(max_digits=3, decimal_places=2, default=0)
     rating_count = models.IntegerField(default=0)
+    accent_color = models.CharField(max_length=8, blank=True, default="")
+    accent_until = models.DateField(null=True, blank=True)
     create_user = models.ForeignKey(
         Resident, null=True, blank=True, on_delete=models.SET_NULL, related_name="services"
     )
@@ -182,17 +197,30 @@ class Service(models.Model):
 
     def price_label(self):
         if self.price_note:
-            return self.price_note
+            note = self.price_note.strip()
+            if note.lower().startswith("от "):
+                note = note[3:].strip()
+            return note
         if self.price_cents is None:
-            return "договорная"
+            return "Договорная"
         rub = round(self.price_cents / 100)
-        return f"от {rub:,}".replace(",", " ") + " ₽"
+        return f"{rub:,}".replace(",", " ") + " ₽"
 
     def recalc_rating(self):
         agg = self.reviews.alive().aggregate(avg=Avg("rating"), cnt=Count("id"))
         self.rating_count = agg["cnt"] or 0
         self.rating_value = round(agg["avg"] or 0, 2)
         self.save(update_fields=["rating_count", "rating_value"])
+
+    @property
+    def is_accent(self):
+        if not self.accent_color or not self.accent_until:
+            return False
+        return self.accent_until >= timezone.localdate()
+
+    @property
+    def accent_key(self):
+        return self.accent_color if self.is_accent else ""
 
     def __str__(self):
         return self.name
@@ -226,6 +254,7 @@ class MarketItem(models.Model):
     description = models.TextField(blank=True, default="")
     price_cents = models.IntegerField(null=True, blank=True)
     price_note = models.CharField(max_length=64, blank=True, default="")
+    phone = models.CharField(max_length=20, blank=True, default="")
     create_user = models.ForeignKey(
         Resident, null=True, blank=True, on_delete=models.SET_NULL, related_name="market_items"
     )
