@@ -608,18 +608,17 @@ button, .btn, .btn-contact, .btn-share, .btn-sold, .app-nav a {
   to { opacity: 1; }
 }
 .market-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: .7rem;
   padding: .2rem 1rem 1.25rem;
 }
 .market-grid > .market-card,
 .market-grid > .grid-item {
-  flex: 0 0 46%;
-  min-width: 156px;
-  max-width: 210px;
+  min-width: 0;
+  width: 100%;
 }
-.market-grid > .empty { flex: 1 0 100%; }
+.market-grid > .empty { grid-column: 1 / -1; }
 .market-card {
   display: flex;
   flex-direction: column;
