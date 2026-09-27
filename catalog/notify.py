@@ -57,11 +57,17 @@ MARKET_OPEN_URL = "https://met-intelligent-second-laboratories.trycloudflare.com
 MARKET_BOT_URL = "https://t.me/vb2_MARKETPLACE_bot"
 
 
-def send_market_topic(name: str, photo_path: str = "") -> None:
+def _public_base() -> str:
+    url = (settings.MINI_APP_URL or "").rstrip("/")
+    if url.startswith("https://"):
+        return url
+    return MARKET_OPEN_URL
+
+
+def send_topic_card(caption: str, photo_path: str = "") -> None:
     chat_id = settings.TELEGRAM_GROUP_ID
-    if not chat_id or not name:
+    if not chat_id or not caption:
         return
-    caption = f"Новая вещь в барахолке «{name}»"
     markup = json.dumps(
         {"inline_keyboard": [[{"text": "Открыть маркетплейс", "url": MARKET_BOT_URL}]]}
     )
@@ -70,7 +76,7 @@ def send_market_topic(name: str, photo_path: str = "") -> None:
         if photo_path.startswith("http://") or photo_path.startswith("https://"):
             photo_url = photo_path
         else:
-            photo_url = MARKET_OPEN_URL.rstrip("/") + "/" + photo_path.lstrip("/")
+            photo_url = _public_base().rstrip("/") + "/" + photo_path.lstrip("/")
 
     def _run():
         base = {
@@ -85,13 +91,26 @@ def send_market_topic(name: str, photo_path: str = "") -> None:
                 timeout=20,
             )
             if result.get("ok"):
-                print("market topic photo ok", flush=True)
+                print("topic photo ok", flush=True)
                 return
-            print("market topic photo failed", result, flush=True)
+            print("topic photo failed", result, flush=True)
         result = _bot_api("sendMessage", {**base, "text": caption[:3500]})
-        print("market topic", result, flush=True)
+        print("topic", result, flush=True)
 
     threading.Thread(target=_run, daemon=True).start()
+
+
+def send_market_topic(name: str, photo_path: str = "") -> None:
+    send_topic_card(f"Новая вещь в барахолке «{name}»", photo_path)
+
+
+def notify_can_raise(user_id, name: str) -> None:
+    if not user_id or int(user_id) <= 1 or not name:
+        return
+    send_telegram(
+        user_id,
+        f"Можно поднять карточку в барахолке «{name}». Откройте объявление и нажмите «Поднять».",
+    )
 
 
 def send_share_card(chat_id, photo_url: str, caption: str, button_url: str) -> bool:

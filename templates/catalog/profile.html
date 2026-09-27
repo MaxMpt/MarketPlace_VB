@@ -134,6 +134,13 @@
         {% include "catalog/_card.html" with href=card_url name=item.name subtitle=item.category.title cover=item.cover price=item.price_label hide_rating=1 %}
         <div class="card-actions">
           {% include "catalog/_edit_icon.html" %}
+          {% if item.can_raise %}
+          <form method="post" action="{% url 'raise_market' item.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="/profile/">
+            <button type="submit" class="btn-raise slim">Поднять</button>
+          </form>
+          {% endif %}
           <form class="card-del" method="post" action="{% url 'delete_listing' %}" data-confirm="Вы уверены, что хотите удалить объявление?">
             {% csrf_token %}
             <input type="hidden" name="kind" value="market">

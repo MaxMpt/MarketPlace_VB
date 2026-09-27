@@ -43,7 +43,10 @@
     {% for r in reviews %}
       <article class="review">
         <div class="review-head">
-          <p>{{ r.author_name }}</p>
+          <p class="review-author">
+            {% if r.create_user %}<img class="review-avatar" src="{{ r.create_user.avatar }}" alt="">{% endif %}
+            <span>{{ r.author_name }}</span>
+          </p>
           {% stars r.rating 12 %}
         </div>
         {% if r.review_text %}<p>{{ r.review_text }}</p>{% endif %}

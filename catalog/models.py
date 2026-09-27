@@ -259,6 +259,8 @@ class MarketItem(models.Model):
         Resident, null=True, blank=True, on_delete=models.SET_NULL, related_name="market_items"
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    raised_at = models.DateTimeField(null=True, blank=True)
+    raise_notified_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
@@ -284,6 +286,17 @@ class MarketItem(models.Model):
         if not self.created_at:
             return timezone.now() + timedelta(days=MARKET_LIFE_DAYS)
         return self.created_at + timedelta(days=MARKET_LIFE_DAYS)
+
+    @property
+    def next_raise_at(self):
+        base = self.raised_at or self.created_at
+        if not base:
+            return timezone.now()
+        return base + timedelta(days=7)
+
+    @property
+    def can_raise(self):
+        return timezone.now() >= self.next_raise_at
 
     def __str__(self):
         return self.name

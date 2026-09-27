@@ -1,4 +1,5 @@
 from django.db.models import Case, IntegerField, Prefetch, Q, Value, When
+from django.db.models.functions import Coalesce
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -22,7 +23,7 @@ from .models import (
     ServiceCategory,
     UserSettings,
 )
-from .notify import is_admin, login_of, notify_admins, send_market_topic, send_share_card, send_telegram, stars_word
+from .notify import is_admin, login_of, notify_admins, send_market_topic, send_share_card, send_telegram, send_topic_card, stars_word
 from .highlight import highlight_stats, refresh_today_highlight, save_group_message, save_reaction_count, save_user_reaction, today_highlight
 from .utils import listing_share, normalize_phone, parse_price_input, save_resized_image, telegram_contact_url
 
@@ -235,7 +236,8 @@ def market_list(request):
         MarketItem.objects.alive()
         .select_related("category", "create_user")
         .prefetch_related(_photos())
-        .order_by("-id")
+        .annotate(fresh=Coalesce("raised_at", "created_at"))
+        .order_by("-fresh", "-id")
     )
     if slug:
         qs = qs.filter(category__slug=slug)
@@ -271,6 +273,19 @@ def market_detail(request, pk):
             "back": "/market/",
         },
     )
+
+
+@require_POST
+def raise_market(request, pk):
+    _expire_market()
+    item = get_object_or_404(MarketItem.objects.alive(), pk=pk)
+    nxt = request.POST.get("next") or f"/market/{item.pk}/"
+    if item.create_user_id != request.resident.id or not item.can_raise:
+        return redirect(nxt)
+    item.raised_at = timezone.now()
+    item.raise_notified_at = None
+    item.save(update_fields=["raised_at", "raise_notified_at", "updated_at"])
+    return redirect(nxt)
 
 
 def profile(request):
@@ -498,6 +513,7 @@ def add_listing(request):
                         create_user=request.resident,
                     )
                     _save_photos(files, service=service)
+                    send_topic_card(f"Новая услуга «{service.name}»", _cover_src(service))
                     notify_admins(
                         f"Новая услуга «{service.name}» от {login_of(request.resident)}"
                     )
@@ -528,8 +544,7 @@ def add_listing(request):
                             create_user=request.resident,
                         )
                         _save_photos(files, market=item)
-                        cover = item.photos.alive().order_by("sort_order", "id").first()
-                        send_market_topic(item.name, cover.src if cover else "")
+                        send_market_topic(item.name, _cover_src(item))
                         notify_admins(
                             f"Новая вещь в барахолке «{item.name}» от {login_of(request.resident)}"
                         )
@@ -554,6 +569,7 @@ def add_listing(request):
                         map_provider="yandex",
                     )
                     _save_photos(files, company=company)
+                    send_topic_card(f"Новая рекомендация «{company.name}»", _cover_src(company))
                     notify_admins(
                         f"Новая рекомендация «{company.name}» от {login_of(request.resident)}"
                     )
@@ -950,6 +966,11 @@ def _notify_review(owner, target, reviewer, rating, text):
         owner.id,
         f"Вашей {target} пользователь {reviewer.display_name} поставил {stars_word(rating)}.{comment}",
     )
+
+
+def _cover_src(obj) -> str:
+    photo = obj.photos.alive().order_by("sort_order", "id").first()
+    return photo.src if photo else ""
 
 
 def _save_photos(files, service=None, company=None, review=None, market=None):

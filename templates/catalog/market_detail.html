@@ -14,6 +14,14 @@
   <p class="price">{{ item.price_label }}</p>
   {% if item.description %}<p class="lead">{{ item.description }}</p>{% endif %}
   {% if item.create_user_id == resident.id %}
+    {% if item.can_raise %}
+    <form method="post" action="{% url 'raise_market' item.pk %}">
+      {% csrf_token %}
+      <button type="submit" class="btn-raise">Поднять объявление</button>
+    </form>
+    {% else %}
+    <p class="muted tiny">Поднять можно {{ item.next_raise_at|date:"d.m.Y" }}</p>
+    {% endif %}
   <p class="muted tiny">Объявление снимется {{ item.expires_at|date:"d.m.Y" }} — через 60 дней после публикации.</p>
   {% else %}
   <p class="muted tiny">Дата актуальности {{ item.created_at|date:"d.m.Y" }}</p>
