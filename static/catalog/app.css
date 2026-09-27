@@ -641,22 +641,30 @@ button, .btn, .btn-contact, .btn-share, .btn-sold, .app-nav a {
   object-fit: cover;
   outline: 0;
 }
+.card-photo-box {
+  position: relative;
+  aspect-ratio: 1;
+  background: var(--bg);
+  overflow: hidden;
+}
 .card-photos {
   display: flex;
-  aspect-ratio: 1;
+  height: 100%;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
   scrollbar-width: none;
-  position: relative;
-  background: var(--bg);
+  -webkit-overflow-scrolling: touch;
 }
 .card-photos::-webkit-scrollbar { display: none; }
 .card-photos img {
   flex: 0 0 100%;
   width: 100%;
+  min-width: 100%;
   height: 100%;
   object-fit: cover;
-  scroll-snap-align: center;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
   pointer-events: none;
 }
 .card-dots {

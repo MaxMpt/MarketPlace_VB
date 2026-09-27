@@ -322,31 +322,47 @@
 
   document.querySelectorAll("[data-photos]").forEach(function (box) {
     var imgs = box.querySelectorAll("img");
-    if (imgs.length > 1) {
-      var dots = document.createElement("span");
+    var wrap = box.parentElement;
+    var dots = null;
+    function paint(index) {
+      if (!dots) return;
+      dots.querySelectorAll("i").forEach(function (mark, n) {
+        mark.className = n === index ? "on" : "";
+      });
+    }
+    if (imgs.length > 1 && wrap) {
+      dots = document.createElement("span");
       dots.className = "card-dots";
       imgs.forEach(function (_, i) {
         var mark = document.createElement("i");
         if (i === 0) mark.className = "on";
         dots.appendChild(mark);
       });
-      box.appendChild(dots);
-      box.addEventListener("scroll", function () {
-        var index = Math.round(box.scrollLeft / Math.max(box.clientWidth, 1));
-        dots.querySelectorAll("i").forEach(function (mark, n) {
-          mark.className = n === index ? "on" : "";
-        });
-      }, { passive: true });
+      wrap.appendChild(dots);
     }
     var startX = 0;
+    var startLeft = 0;
     var moved = false;
-    box.addEventListener("pointerdown", function (e) {
-      startX = e.clientX;
+    box.addEventListener("touchstart", function (e) {
+      startX = e.touches[0].clientX;
+      startLeft = box.scrollLeft;
       moved = false;
-    });
-    box.addEventListener("pointermove", function (e) {
-      if (Math.abs(e.clientX - startX) > 8) moved = true;
-    });
+    }, { passive: true });
+    box.addEventListener("touchend", function (e) {
+      if (imgs.length < 2) return;
+      var dx = e.changedTouches[0].clientX - startX;
+      if (Math.abs(dx) < 24) return;
+      moved = true;
+      var width = box.clientWidth || 1;
+      var index = Math.round(startLeft / width) + (dx < 0 ? 1 : -1);
+      if (index < 0) index = 0;
+      if (index > imgs.length - 1) index = imgs.length - 1;
+      box.scrollTo({ left: index * width, behavior: "smooth" });
+      paint(index);
+    }, { passive: true });
+    box.addEventListener("scroll", function () {
+      paint(Math.round(box.scrollLeft / Math.max(box.clientWidth, 1)));
+    }, { passive: true });
     box.addEventListener("click", function (e) {
       if (!moved) return;
       e.preventDefault();

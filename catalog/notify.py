@@ -63,7 +63,7 @@ def send_market_topic(name: str, photo_path: str = "") -> None:
         return
     caption = f"Новая вещь в барахолке «{name}»"
     markup = json.dumps(
-        {"inline_keyboard": [[{"text": "Открыть маркетплейс", "url": MARKET_OPEN_URL}]]}
+        {"inline_keyboard": [[{"text": "Открыть маркетплейс", "url": MARKET_BOT_URL}]]}
     )
     photo_url = ""
     if photo_path:
