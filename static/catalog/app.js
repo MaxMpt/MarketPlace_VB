@@ -320,6 +320,41 @@
     document.body.appendChild(box);
   });
 
+  document.querySelectorAll("[data-photos]").forEach(function (box) {
+    var imgs = box.querySelectorAll("img");
+    if (imgs.length > 1) {
+      var dots = document.createElement("span");
+      dots.className = "card-dots";
+      imgs.forEach(function (_, i) {
+        var mark = document.createElement("i");
+        if (i === 0) mark.className = "on";
+        dots.appendChild(mark);
+      });
+      box.appendChild(dots);
+      box.addEventListener("scroll", function () {
+        var index = Math.round(box.scrollLeft / Math.max(box.clientWidth, 1));
+        dots.querySelectorAll("i").forEach(function (mark, n) {
+          mark.className = n === index ? "on" : "";
+        });
+      }, { passive: true });
+    }
+    var startX = 0;
+    var moved = false;
+    box.addEventListener("pointerdown", function (e) {
+      startX = e.clientX;
+      moved = false;
+    });
+    box.addEventListener("pointermove", function (e) {
+      if (Math.abs(e.clientX - startX) > 8) moved = true;
+    });
+    box.addEventListener("click", function (e) {
+      if (!moved) return;
+      e.preventDefault();
+      e.stopPropagation();
+      moved = false;
+    });
+  });
+
   document.querySelectorAll("form.review-form").forEach(function (form) {
     var btn = form.querySelector("[data-review-submit]");
     function sync() {

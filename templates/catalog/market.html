@@ -13,8 +13,10 @@
 <div class="market-grid js-cards">
   {% for item in items %}
     <a class="market-card" href="{% url 'market_detail' item.pk %}">
-      <div class="market-card-img">
-        {% if item.cover %}<img src="{{ item.cover }}" alt="">{% endif %}
+      <div class="card-photos" data-photos>
+        {% for photo in item.photos.all %}
+          {% if photo.src %}<img src="{{ photo.src }}" alt="">{% endif %}
+        {% endfor %}
       </div>
       <div class="market-card-body">
         <h3>{{ item.name }}</h3>

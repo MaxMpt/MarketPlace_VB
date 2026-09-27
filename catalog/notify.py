@@ -52,6 +52,48 @@ def send_start_card(chat_id) -> None:
     print("send_start_card", result, flush=True)
 
 
+MARKET_TOPIC_ID = 12390
+MARKET_OPEN_URL = "https://met-intelligent-second-laboratories.trycloudflare.com"
+MARKET_BOT_URL = "https://t.me/vb2_MARKETPLACE_bot"
+
+
+def send_market_topic(name: str, photo_path: str = "") -> None:
+    chat_id = settings.TELEGRAM_GROUP_ID
+    if not chat_id or not name:
+        return
+    caption = f"Новая вещь в барахолке «{name}»"
+    markup = json.dumps(
+        {"inline_keyboard": [[{"text": "Открыть маркетплейс", "url": MARKET_OPEN_URL}]]}
+    )
+    photo_url = ""
+    if photo_path:
+        if photo_path.startswith("http://") or photo_path.startswith("https://"):
+            photo_url = photo_path
+        else:
+            photo_url = MARKET_OPEN_URL.rstrip("/") + "/" + photo_path.lstrip("/")
+
+    def _run():
+        base = {
+            "chat_id": int(chat_id),
+            "message_thread_id": MARKET_TOPIC_ID,
+            "reply_markup": markup,
+        }
+        if photo_url:
+            result = _bot_api(
+                "sendPhoto",
+                {**base, "photo": photo_url, "caption": caption[:1024]},
+                timeout=20,
+            )
+            if result.get("ok"):
+                print("market topic photo ok", flush=True)
+                return
+            print("market topic photo failed", result, flush=True)
+        result = _bot_api("sendMessage", {**base, "text": caption[:3500]})
+        print("market topic", result, flush=True)
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
 def send_share_card(chat_id, photo_url: str, caption: str, button_url: str) -> bool:
     markup = json.dumps(
         {"inline_keyboard": [[{"text": "Открыть в каталоге", "url": button_url}]]}

@@ -641,6 +641,42 @@ button, .btn, .btn-contact, .btn-share, .btn-sold, .app-nav a {
   object-fit: cover;
   outline: 0;
 }
+.card-photos {
+  display: flex;
+  aspect-ratio: 1;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  position: relative;
+  background: var(--bg);
+}
+.card-photos::-webkit-scrollbar { display: none; }
+.card-photos img {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  scroll-snap-align: center;
+  pointer-events: none;
+}
+.card-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: .4rem;
+  display: flex;
+  justify-content: center;
+  gap: .28rem;
+  pointer-events: none;
+}
+.card-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.5);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.25);
+}
+.card-dots i.on { background: #fff; }
 .market-card-body {
   flex: 1;
   display: flex;

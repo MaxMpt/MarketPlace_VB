@@ -22,7 +22,7 @@ from .models import (
     ServiceCategory,
     UserSettings,
 )
-from .notify import is_admin, login_of, notify_admins, send_share_card, send_telegram, stars_word
+from .notify import is_admin, login_of, notify_admins, send_market_topic, send_share_card, send_telegram, stars_word
 from .highlight import highlight_stats, refresh_today_highlight, save_group_message, save_reaction_count, save_user_reaction, today_highlight
 from .utils import listing_share, normalize_phone, parse_price_input, save_resized_image, telegram_contact_url
 
@@ -528,6 +528,8 @@ def add_listing(request):
                             create_user=request.resident,
                         )
                         _save_photos(files, market=item)
+                        cover = item.photos.alive().order_by("sort_order", "id").first()
+                        send_market_topic(item.name, cover.src if cover else "")
                         notify_admins(
                             f"Новая вещь в барахолке «{item.name}» от {login_of(request.resident)}"
                         )
