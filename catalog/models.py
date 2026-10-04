@@ -196,6 +196,7 @@ class Service(models.Model):
         photo = self.photos.alive().order_by("sort_order", "id").first()
         return photo.src if photo else ""
 
+    @property
     def price_label(self):
         if self.price_note:
             note = self.price_note.strip()
@@ -277,6 +278,7 @@ class MarketItem(models.Model):
         photo = self.photos.alive().order_by("sort_order", "id").first()
         return photo.src if photo else ""
 
+    @property
     def price_label(self):
         if self.price_note:
             return self.price_note

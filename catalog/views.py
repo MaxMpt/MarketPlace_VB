@@ -93,6 +93,19 @@ def _query(request):
     return (request.GET.get("q") or "").strip()[:80]
 
 
+def _search(qs, q):
+    needle = (q or "").casefold()
+    if not needle:
+        return qs
+    found = []
+    for obj in qs:
+        name = (getattr(obj, "name", "") or "").casefold()
+        description = (getattr(obj, "description", "") or "").casefold()
+        if needle in name or needle in description:
+            found.append(obj)
+    return found
+
+
 def home(request):
     _expire_market()
     services = (
@@ -129,9 +142,11 @@ def services_list(request):
     categories = ServiceCategory.objects.alive()
     active = categories.filter(slug=slug).first() if slug else None
     qs = _offered_services().select_related("category", "create_user").prefetch_related(_photos())
+    if active:
+        qs = qs.filter(category=active)
+    qs = _promo(qs, grouped=not active)
     if q:
-        qs = qs.filter(name__icontains=q)
-    qs = _promo(qs.filter(category=active), grouped=False) if active else _promo(qs)
+        qs = _search(qs, q)
     return render(
         request,
         "catalog/services.html",
@@ -208,9 +223,11 @@ def companies_list(request):
     categories = CompanyCategory.objects.alive()
     active = categories.filter(slug=slug).first() if slug else None
     qs = Company.objects.alive().select_related("category", "create_user").prefetch_related(_photos())
+    if active:
+        qs = qs.filter(category=active)
+    qs = _promo(qs, grouped=not active)
     if q:
-        qs = qs.filter(name__icontains=q)
-    qs = _promo(qs.filter(category=active), grouped=False) if active else _promo(qs)
+        qs = _search(qs, q)
     return render(
         request,
         "catalog/companies.html",
@@ -263,7 +280,7 @@ def market_list(request):
     if slug:
         qs = qs.filter(category__slug=slug)
     if q:
-        qs = qs.filter(name__icontains=q)
+        qs = _search(qs, q)
     return render(
         request,
         "catalog/market.html",
