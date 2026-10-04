@@ -101,6 +101,7 @@
     apply();
     if (tg.onEvent) {
       tg.onEvent("viewportChanged", apply);
+      tg.onEvent("viewportChanged", liftSearch);
       tg.onEvent("themeChanged", function () {
         if (document.cookie.match(/(?:^|; )vb_theme=(light|dark)/)) return;
         var darkNow = tg.colorScheme === "dark";
@@ -111,6 +112,42 @@
     }
   } else {
     document.documentElement.style.setProperty("--app-height", window.innerHeight + "px");
+  }
+
+  function liftSearch() {
+    var dock = document.querySelector(".search-dock");
+    if (!dock) return;
+    var input = dock.querySelector("input");
+    var focused = input && document.activeElement === input;
+    var lift = 0;
+    if (focused) {
+      var vv = window.visualViewport;
+      if (vv) lift = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      if (tg && tg.viewportStableHeight && tg.viewportHeight) {
+        lift = Math.max(lift, Math.round(tg.viewportStableHeight - tg.viewportHeight));
+      }
+      if (lift < 48) lift = 0;
+    }
+    var nav = document.querySelector(".app-nav");
+    var navH = nav ? nav.offsetHeight : 0;
+    var shift = lift ? Math.max(0, lift - navH) : 0;
+    dock.style.transform = shift ? "translate3d(0,-" + shift + "px,0)" : "";
+    document.documentElement.classList.toggle("kb-open", !!shift);
+  }
+  var searchDock = document.querySelector(".search-dock");
+  if (searchDock) {
+    var searchInput = searchDock.querySelector("input");
+    if (searchInput) {
+      searchInput.addEventListener("focus", liftSearch);
+      searchInput.addEventListener("blur", function () {
+        setTimeout(liftSearch, 80);
+      });
+    }
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", liftSearch);
+      window.visualViewport.addEventListener("scroll", liftSearch);
+    }
+    window.addEventListener("resize", liftSearch);
   }
 
   document.querySelectorAll("[data-share]").forEach(function (btn) {
