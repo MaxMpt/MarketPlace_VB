@@ -5,15 +5,17 @@
   <a class="btn" href="{% url 'add' %}?kind=market">+ Продать вещь</a>
 </div>
 <div class="chips js-cats">
-  <a class="{% if not active_cat %}chip-on{% endif %}" href="{% url 'market' %}">Все</a>
+  <a class="{% if not active_cat %}chip-on{% endif %}" href="{% url 'market' %}{% if q %}?q={{ q|urlencode }}{% endif %}">Все</a>
   {% for c in categories %}
-    <a class="{% if active_cat == c.slug %}chip-on{% endif %}" href="{% url 'market' %}?cat={{ c.slug }}">{{ c.title }}</a>
+    <a class="{% if active_cat == c.slug %}chip-on{% endif %}" href="{% url 'market' %}?cat={{ c.slug }}{% if q %}&q={{ q|urlencode }}{% endif %}">{{ c.title }}</a>
   {% endfor %}
 </div>
 <div class="market-grid js-cards">
   {% for item in items %}
-    <a class="market-card" href="{% url 'market_detail' item.pk %}">
+    <div class="grid-item{% if item.create_user_id == resident.id or is_admin %} card-own{% endif %}">
+    <a class="market-card{% if item.sold_at %} is-sold{% endif %}" href="{% url 'market_detail' item.pk %}">
       <div class="card-photo-box">
+        {% if item.sold_at %}<span class="sold-badge">Продано</span>{% endif %}
         <div class="card-photos" data-photos>
           {% for photo in item.photos.all %}
             {% if photo.src %}<img src="{{ photo.src }}" alt="">{% endif %}
@@ -25,11 +27,26 @@
         <p>{{ item.description|default:"" }}</p>
           <div class="tile-foot">
             <span class="market-price">{{ item.price_label }}</span>
+            {% if item.was_price_label %}<span class="was-price">было {{ item.was_price_label }}</span>{% endif %}
           </div>
       </div>
     </a>
+    {% if item.create_user_id == resident.id or is_admin %}
+      {% url 'edit_market' item.pk as edit_url %}
+      {% include "catalog/_edit_icon.html" %}
+    {% endif %}
+    </div>
   {% empty %}
-    <p class="empty" style="grid-column:1/-1">В этой категории пока пусто.</p>
+    <p class="empty" style="grid-column:1/-1">{% if q %}Ничего не нашлось.{% else %}В этой категории пока пусто.{% endif %}</p>
   {% endfor %}
+</div>
+{% endblock %}
+{% block dock %}
+<div class="search-dock">
+  {% if active_cat %}
+    {% include "catalog/_search.html" with cat=active_cat %}
+  {% else %}
+    {% include "catalog/_search.html" %}
+  {% endif %}
 </div>
 {% endblock %}

@@ -76,15 +76,27 @@ def _photos():
 
 def _expire_market():
     cutoff = timezone.now() - timedelta(days=MARKET_LIFE_DAYS)
+    now = timezone.now()
+    MarketItem.objects.filter(
+        deleted_at__isnull=True, sold_at__lt=now - timedelta(days=1)
+    ).update(deleted_at=now)
     MarketItem.objects.filter(deleted_at__isnull=True, created_at__lt=cutoff).update(
-        deleted_at=timezone.now()
+        deleted_at=now
     )
+
+
+def _offered_services():
+    return Service.objects.alive().filter(paused_at__isnull=True)
+
+
+def _query(request):
+    return (request.GET.get("q") or "").strip()[:80]
 
 
 def home(request):
     _expire_market()
     services = (
-        Service.objects.alive()
+        _offered_services()
         .select_related("category", "create_user")
         .prefetch_related(_photos())
         .order_by("-rating_value", "-rating_count", "id")[:3]
@@ -102,7 +114,7 @@ def home(request):
             "categories": ServiceCategory.objects.alive(),
             "services": services,
             "companies": companies,
-            "service_count": Service.objects.alive().count(),
+            "service_count": _offered_services().count(),
             "company_count": Company.objects.alive().count(),
             "market_count": MarketItem.objects.alive().count(),
             "highlight": today_highlight(),
@@ -113,9 +125,12 @@ def home(request):
 
 def services_list(request):
     slug = request.GET.get("cat") or ""
+    q = _query(request)
     categories = ServiceCategory.objects.alive()
     active = categories.filter(slug=slug).first() if slug else None
-    qs = Service.objects.alive().select_related("category", "create_user").prefetch_related(_photos())
+    qs = _offered_services().select_related("category", "create_user").prefetch_related(_photos())
+    if q:
+        qs = qs.filter(name__icontains=q)
     qs = _promo(qs.filter(category=active), grouped=False) if active else _promo(qs)
     return render(
         request,
@@ -124,6 +139,7 @@ def services_list(request):
             "categories": categories,
             "services": qs,
             "active_category": active,
+            "q": q,
             "title": active.title if active else "Услуги жителей",
             "back": "/services/" if active else "",
         },
@@ -188,9 +204,12 @@ def service_detail(request, pk):
 
 def companies_list(request):
     slug = request.GET.get("cat") or ""
+    q = _query(request)
     categories = CompanyCategory.objects.alive()
     active = categories.filter(slug=slug).first() if slug else None
     qs = Company.objects.alive().select_related("category", "create_user").prefetch_related(_photos())
+    if q:
+        qs = qs.filter(name__icontains=q)
     qs = _promo(qs.filter(category=active), grouped=False) if active else _promo(qs)
     return render(
         request,
@@ -199,6 +218,7 @@ def companies_list(request):
             "categories": categories,
             "companies": qs,
             "active_category": active,
+            "q": q,
             "title": active.title if active else "Рекомендации",
             "back": "/companies/" if active else "",
         },
@@ -232,6 +252,7 @@ def company_detail(request, pk):
 def market_list(request):
     _expire_market()
     slug = request.GET.get("cat") or ""
+    q = _query(request)
     qs = (
         MarketItem.objects.alive()
         .select_related("category", "create_user")
@@ -241,6 +262,8 @@ def market_list(request):
     )
     if slug:
         qs = qs.filter(category__slug=slug)
+    if q:
+        qs = qs.filter(name__icontains=q)
     return render(
         request,
         "catalog/market.html",
@@ -248,6 +271,7 @@ def market_list(request):
             "categories": MarketCategory.objects.alive(),
             "items": qs,
             "active_cat": slug,
+            "q": q,
             "title": "Барахолка",
         },
     )
@@ -266,8 +290,8 @@ def market_detail(request, pk):
             "item": item,
             "photos": item.photos.alive(),
             "share": listing_share("market", item),
-            "contact_url": _contact(request, item.create_user, item.name, "market"),
-            "phone": item.phone if not (item.create_user and item.create_user.username) else "",
+            "contact_url": "" if item.sold_at else _contact(request, item.create_user, item.name, "market"),
+            "phone": "" if item.sold_at else (item.phone if not (item.create_user and item.create_user.username) else ""),
             "is_admin": is_admin(request.resident),
             "title": item.name,
             "back": "/market/",
@@ -280,7 +304,7 @@ def raise_market(request, pk):
     _expire_market()
     item = get_object_or_404(MarketItem.objects.alive(), pk=pk)
     nxt = request.POST.get("next") or f"/market/{item.pk}/"
-    if item.create_user_id != request.resident.id or not item.can_raise:
+    if item.sold_at or item.create_user_id != request.resident.id or not item.can_raise:
         return redirect(nxt)
     item.raised_at = timezone.now()
     item.raise_notified_at = None
@@ -292,7 +316,7 @@ def profile(request):
     _expire_market()
     user = request.resident
     listings = (
-        Service.objects.alive()
+        _offered_services()
         .filter(create_user=user)
         .select_related("category")
         .prefetch_related(_photos())
@@ -301,14 +325,29 @@ def profile(request):
     market_items = (
         MarketItem.objects.alive().filter(create_user=user).select_related("category").prefetch_related(_photos())
     )
+    paused = (
+        Service.objects.alive()
+        .filter(create_user=user, paused_at__isnull=False)
+        .select_related("category")
+        .prefetch_related(_photos())
+    )
+    hidden_services = []
     reviews = RatingReview.objects.alive().filter(create_user=user).select_related("service", "company")
     prefs, _ = UserSettings.objects.get_or_create(user=user)
     admin = is_admin(user)
+    if admin:
+        hidden_services = (
+            Service.objects.filter(deleted_at__isnull=False)
+            .select_related("create_user", "category")
+            .order_by("-deleted_at")[:40]
+        )
     return render(
         request,
         "catalog/profile.html",
         {
             "listings": listings,
+            "paused_services": paused,
+            "hidden_services": hidden_services,
             "my_companies": companies,
             "my_market": market_items,
             "reviews": reviews,
@@ -403,6 +442,15 @@ def delete_listing(request):
         label = f"вещь «{item.name}»"
     else:
         return redirect("profile")
+    if (
+        kind == "market"
+        and request.POST.get("sold") == "1"
+        and item.create_user_id == user.id
+        and not item.sold_at
+    ):
+        item.sold_at = timezone.now()
+        item.save(update_fields=["sold_at"])
+        return redirect("market_detail", pk=item.pk)
     item.deleted_at = timezone.now()
     item.save(update_fields=["deleted_at"])
     if admin and item.create_user_id and item.create_user_id != user.id:
@@ -417,6 +465,66 @@ def delete_listing(request):
         )
         return redirect(nxt)
     return redirect("profile")
+
+
+@require_POST
+def pause_service(request, pk):
+    service = get_object_or_404(
+        Service.objects.alive().filter(paused_at__isnull=True),
+        pk=pk,
+        create_user=request.resident,
+    )
+    service.paused_at = timezone.now()
+    service.save(update_fields=["paused_at"])
+    return redirect("profile")
+
+
+@require_POST
+def resume_service(request, pk):
+    service = get_object_or_404(
+        Service.objects.alive().filter(paused_at__isnull=False),
+        pk=pk,
+        create_user=request.resident,
+    )
+    service.paused_at = None
+    service.save(update_fields=["paused_at"])
+    return redirect("service_detail", pk=service.pk)
+
+
+@require_POST
+def restore_service(request, pk):
+    if not is_admin(request.resident):
+        return redirect("profile")
+    service = get_object_or_404(Service.objects.filter(deleted_at__isnull=False), pk=pk)
+    service.deleted_at = None
+    service.save(update_fields=["deleted_at"])
+    return redirect("profile")
+
+
+@require_POST
+def report_listing(request):
+    kind = request.POST.get("kind")
+    pk = request.POST.get("pk")
+    models = {
+        "service": (Service, "услугу", "service_detail"),
+        "company": (Company, "рекомендацию", "company_detail"),
+        "market": (MarketItem, "объявление", "market_detail"),
+    }
+    spec = models.get(kind)
+    if not spec:
+        return redirect("home")
+    model, label, back_name = spec
+    item = get_object_or_404(model.objects.alive(), pk=pk)
+    author = getattr(item, "create_user", None)
+    if author and request.resident and author.id == request.resident.id:
+        return redirect(back_name, pk=item.pk)
+    notify_admins(
+        f"Жалоба на {label} «{item.name}». Автор: {login_of(author)}. "
+        f"Написал: {login_of(request.resident)}."
+    )
+    from django.urls import reverse
+
+    return redirect(reverse(back_name, args=[item.pk]) + "?reported=1")
 
 
 @require_POST
@@ -721,6 +829,14 @@ def edit_market(request, pk):
                     if not phone:
                         error = "Укажите номер для связи"
                 if not error:
+                    old_cents = item.price_cents
+                    old_label = item.price_label
+                    discounted = False
+                    if old_cents is not None and cents is not None and cents < old_cents:
+                        item.was_price_cents = old_cents
+                        discounted = True
+                    elif cents != old_cents:
+                        item.was_price_cents = None
                     item.category = category
                     item.name = name
                     item.description = description
@@ -732,6 +848,11 @@ def edit_market(request, pk):
                     files = request.FILES.getlist("photos")[:6]
                     if files:
                         _save_photos(files, market=item)
+                    if discounted:
+                        send_topic_card(
+                            f"Скидка в барахолке «{item.name}»: было {old_label}, стало {item.price_label}",
+                            _cover_src(item),
+                        )
                     return redirect("market_detail", pk=item.pk)
     return render(
         request,
@@ -920,6 +1041,8 @@ def add_review(request):
     files = request.FILES.getlist("photos")[:3]
     if service_id:
         service = get_object_or_404(Service.objects.alive(), pk=service_id)
+        if service.paused_at:
+            return redirect("service_detail", pk=service.pk)
         review, _ = RatingReview.objects.update_or_create(
             service=service,
             create_user=user,

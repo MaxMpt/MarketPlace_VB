@@ -224,6 +224,25 @@ html.dark .today-card {
 .card-body { min-width: 0; flex: 1; }
 .card-own { position: relative; }
 .card-own .card { padding-right: 6.8rem; }
+.stack .card-own {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: .75rem;
+  box-shadow: var(--card);
+  overflow: hidden;
+}
+.stack .card-own .card {
+  padding-right: .55rem;
+  box-shadow: none;
+  border-radius: 0;
+}
+.stack .card-actions {
+  position: static;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  padding: 0 .5rem .5rem;
+}
 .card-actions {
   position: absolute;
   top: .45rem;
@@ -642,6 +661,129 @@ button, .btn, .btn-contact, .btn-share, .btn-sold, .app-nav a {
   min-width: 0;
   width: 100%;
 }
+.market-grid > .card-own > .card-edit,
+.rail-item > .card-edit,
+.grid-item > .card-edit {
+  z-index: 5;
+  width: 30px;
+  height: 30px;
+  background: color-mix(in oklab, #fff 84%, var(--primary));
+  color: var(--primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .22);
+}
+html.dark .market-grid > .card-own > .card-edit,
+html.dark .rail-item > .card-edit,
+html.dark .grid-item > .card-edit {
+  background: color-mix(in oklab, #1c1c1e 72%, var(--primary));
+}
+.was-price {
+  display: block;
+  margin-top: .15rem;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.sold-badge {
+  position: absolute;
+  top: .55rem;
+  left: .55rem;
+  z-index: 3;
+  padding: .28rem .5rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .72);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .03em;
+}
+.market-card.is-sold { opacity: .78; }
+.sold-line {
+  margin: .2rem 0 .4rem;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.search-dock {
+  flex-shrink: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 9;
+}
+.search-dock .search { padding: .45rem .75rem .5rem; }
+html.kb-open .search-dock { z-index: 30; }
+html.kb-open .app-nav { visibility: hidden; }
+.search {
+  padding: .2rem 1rem .65rem;
+}
+.search label {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  height: 2.6rem;
+  padding: 0 .9rem;
+  border-radius: 999px;
+  background: var(--bg);
+}
+.search svg { flex-shrink: 0; color: var(--muted); }
+.search input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--fg);
+  font-size: 15px;
+}
+.search input:focus { outline: none; }
+.search label:focus-within {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 40%, transparent);
+}
+.search input::-webkit-search-decoration,
+.search input::-webkit-search-cancel-button,
+.search input::-webkit-search-results-button { display: none; }
+.btn-report, .btn-pause {
+  margin-top: .85rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0;
+}
+.btn-pause.slim {
+  margin: 0;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 11px;
+}
+.paused-note {
+  margin: .7rem 0;
+  padding: .75rem .85rem;
+  border-radius: .8rem;
+  background: color-mix(in oklab, var(--primary) 12%, var(--bg));
+  font-size: 14px;
+}
+.restore-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  padding: .75rem .85rem;
+  border-radius: .8rem;
+  background: var(--surface);
+  box-shadow: var(--card);
+}
+.restore-row p { margin: 0; font-weight: 600; }
+.card-own > form { margin: .45rem 0 0; }
 .market-grid > .empty { grid-column: 1 / -1; }
 .market-card {
   display: flex;
@@ -977,3 +1119,5 @@ html.dark .accent-crown { background: #1c1c1e; }
 .hl-preview { margin: .75rem 0 0; }
 .hl-refresh { margin-top: .75rem; }
 .hl-status { margin: .6rem 0 0; font-size: 13px; line-height: 1.4; color: var(--muted); }
+
+
