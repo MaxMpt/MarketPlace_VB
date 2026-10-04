@@ -5,11 +5,11 @@
   <a class="btn" href="{% url 'add' %}?kind=company">+ Создать рекомендацию</a>
 </div>
 
-{% if active_category %}
+{% if active_category or q %}
 <div class="chips chips-stick">
-  <a href="{% url 'companies' %}">Все</a>
+  <a class="{% if not active_category %}chip-on{% endif %}" href="{% url 'companies' %}{% if q %}?q={{ q|urlencode }}{% endif %}">Все</a>
   {% for c in categories %}
-    <a class="{% if c.pk == active_category.pk %}chip-on{% endif %}" href="{% url 'companies' %}?cat={{ c.slug }}">{{ c.title }}</a>
+    <a class="{% if active_category and c.pk == active_category.pk %}chip-on{% endif %}" href="{% url 'companies' %}?cat={{ c.slug }}{% if q %}&q={{ q|urlencode }}{% endif %}">{{ c.title }}</a>
   {% endfor %}
 </div>
 <div class="market-grid">
@@ -22,7 +22,7 @@
       {% include "catalog/_tile.html" with wrap="grid-item" href=card_url name=c.name description=c.description cover=c.cover rating=c.rating_value count=c.rating_count accent=c.accent_key %}
     {% endif %}
   {% empty %}
-    <p class="empty" style="grid-column:1/-1">В этой категории пока пусто.</p>
+    <p class="empty" style="grid-column:1/-1">{% if q %}Ничего не нашлось.{% else %}В этой категории пока пусто.{% endif %}</p>
   {% endfor %}
 </div>
 
@@ -59,4 +59,13 @@
   {% endfor %}
 </div>
 {% endif %}
+{% endblock %}
+{% block dock %}
+<div class="search-dock">
+  {% if active_category %}
+    {% include "catalog/_search.html" with cat=active_category.slug %}
+  {% else %}
+    {% include "catalog/_search.html" %}
+  {% endif %}
+</div>
 {% endblock %}

@@ -104,6 +104,12 @@ def send_market_topic(name: str, photo_path: str = "") -> None:
     send_topic_card(f"Новая вещь в барахолке «{name}»", photo_path)
 
 
+def notify_market_expiry(user_id, name: str, when: str) -> None:
+    if not user_id or int(user_id) <= 1 or not name:
+        return
+    send_telegram(user_id, f"Объявление «{name}» снимется {when}.")
+
+
 def notify_can_raise(user_id, name: str) -> None:
     if not user_id or int(user_id) <= 1 or not name:
         return

@@ -41,14 +41,28 @@ def _raise_reminders():
     time.sleep(30)
     while True:
         try:
+            from datetime import timedelta
+
             from django.utils import timezone
 
             from .models import MarketItem
-            from .notify import notify_can_raise
+            from .notify import notify_can_raise, notify_market_expiry
 
             now = timezone.now()
+            horizon = now + timedelta(days=3)
             items = MarketItem.objects.alive().select_related("create_user")
             for item in items:
+                if item.sold_at:
+                    continue
+                if (
+                    item.create_user_id
+                    and not item.expire_notified_at
+                    and now < item.expires_at <= horizon
+                ):
+                    when = timezone.localtime(item.expires_at).strftime("%d.%m.%Y")
+                    notify_market_expiry(item.create_user_id, item.name, when)
+                    item.expire_notified_at = now
+                    item.save(update_fields=["expire_notified_at"])
                 if not item.can_raise or not item.create_user_id:
                     continue
                 opened = item.next_raise_at

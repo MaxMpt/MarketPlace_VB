@@ -184,6 +184,7 @@ class Service(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    paused_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
     objects = AliveQuerySet.as_manager()
@@ -261,6 +262,9 @@ class MarketItem(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     raised_at = models.DateTimeField(null=True, blank=True)
     raise_notified_at = models.DateTimeField(null=True, blank=True)
+    was_price_cents = models.IntegerField(null=True, blank=True)
+    sold_at = models.DateTimeField(null=True, blank=True)
+    expire_notified_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
@@ -279,6 +283,13 @@ class MarketItem(models.Model):
         if self.price_cents is None:
             return "договорная"
         rub = round(self.price_cents / 100)
+        return f"{rub:,}".replace(",", " ") + " ₽"
+
+    @property
+    def was_price_label(self):
+        if not self.was_price_cents:
+            return ""
+        rub = round(self.was_price_cents / 100)
         return f"{rub:,}".replace(",", " ") + " ₽"
 
     @property
